@@ -124,7 +124,7 @@ const Auth = (() => {
 
       let data;
       if (mode === 'signup') {
-        data = await verifySignupOtp(currentEmail, otp);
+        data = await API.verifyOtp(currentEmail, otp);
       } else {
         // Can fallback to this if login requires OTP in the future, 
         // but for now mode === login shouldn't reach here since we redirect immediately
@@ -182,36 +182,15 @@ const Auth = (() => {
 
   // ── API Calls ──
   async function signup(email, name, password) {
-    const res = await fetch('/api/auth/signup', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email, name, password })
-    });
-    const data = await res.json();
-    if (!res.ok) throw new Error(data.error || 'Signup failed');
-    return data;
+    return API.signup(email, name, password);
   }
 
   async function login(email, password) {
-    const res = await fetch('/api/auth/login', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email, password })
-    });
-    const data = await res.json();
-    if (!res.ok) throw new Error(data.error || 'Login failed');
-    return data;
+    return API.login(email, password);
   }
 
   async function verifySignupOtp(email, otp) {
-    const res = await fetch('/api/auth/verify-otp', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email, otp })
-    });
-    const data = await res.json();
-    if (!res.ok) throw new Error(data.error || 'Verification failed');
-    return data;
+    return API.verifyOtp(email, otp);
   }
 
   // ── Utilities ──
