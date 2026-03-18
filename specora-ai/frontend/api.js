@@ -7,6 +7,24 @@ const API = (() => {
     ? 'http://localhost:5000/api'
     : 'https://specoraai.onrender.com/api';
 
+  function buildNonJsonError(text, res, url) {
+    const looksLikeHtml = /^\s*</.test(text);
+
+    if (looksLikeHtml) {
+      if (res.status >= 500) {
+        return new Error(`The API server returned an HTML error page for ${url}. Please try again in a moment.`);
+      }
+
+      return new Error(`The API endpoint ${url} returned HTML instead of JSON. Please verify the backend URL and deployment.`);
+    }
+
+    if (text) {
+      return new Error(text);
+    }
+
+    return new Error(`Request failed (${res.status})`);
+  }
+
   async function request(url, options = {}) {
     try {
       const res = await fetch(`${BASE}${url}`, {
@@ -14,13 +32,31 @@ const API = (() => {
         ...options,
       });
 
-      const data = await res.json();
+      const contentType = res.headers.get('content-type') || '';
+      const rawText = await res.text();
+      let data = null;
 
-      if (!res.ok) {
-        throw new Error(data.error || `Request failed (${res.status})`);
+      if (rawText) {
+        if (contentType.includes('application/json')) {
+          try {
+            data = JSON.parse(rawText);
+          } catch (parseError) {
+            throw new Error('The API returned invalid JSON. Please try again.');
+          }
+        } else {
+          try {
+            data = JSON.parse(rawText);
+          } catch (parseError) {
+            throw buildNonJsonError(rawText, res, url);
+          }
+        }
       }
 
-      return data;
+      if (!res.ok) {
+        throw new Error(data?.error || data?.message || `Request failed (${res.status})`);
+      }
+
+      return data || {};
     } catch (error) {
       console.error(`API Error [${url}]:`, error.message);
       throw error;
@@ -70,9 +106,28 @@ const API = (() => {
       body: formData,
     });
 
-    const data = await res.json();
+    const contentType = res.headers.get('content-type') || '';
+    const rawText = await res.text();
+    let data = null;
+
+    if (rawText) {
+      if (contentType.includes('application/json')) {
+        try {
+          data = JSON.parse(rawText);
+        } catch (parseError) {
+          throw new Error('The upload API returned invalid JSON. Please try again.');
+        }
+      } else {
+        try {
+          data = JSON.parse(rawText);
+        } catch (parseError) {
+          throw buildNonJsonError(rawText, res, `/meetings/${meetingId}/upload`);
+        }
+      }
+    }
+
     if (!res.ok) throw new Error(data.error || 'Upload failed');
-    return data;
+    return data || {};
   }
 
   /**
