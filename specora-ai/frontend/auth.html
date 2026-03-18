@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Authentication — Specora AI</title>
+  <link rel="stylesheet" href="styles.css">
+  <link rel="stylesheet" href="auth.css">
+</head>
+<body class="auth-body">
+
+<div id="notif" class="notif">
+  <span id="notif-icon">✓</span>
+  <span id="notif-msg">Done</span>
+</div>
+
+<div class="auth-container">
+  <div class="auth-card" id="auth-card">
+    
+    <div class="auth-logo">
+      <div class="logo-icon">◈</div>
+      <div class="logo-text">Specora<span>AI</span></div>
+    </div>
+
+    <!-- ─── FORM VIEW: Login / Signup ─── -->
+    <div id="view-form" class="auth-view active">
+      <h1 id="auth-title">Welcome back</h1>
+      <p id="auth-subtitle" class="text2 mb24">Enter your email to sign in</p>
+
+      <div class="tab-bar mb24">
+        <button class="tab-btn active" id="tab-login" onclick="Auth.switchTab('login')">Login</button>
+        <button class="tab-btn" id="tab-signup" onclick="Auth.switchTab('signup')">Sign Up</button>
+      </div>
+
+      <form id="auth-form" onsubmit="Auth.handleAuthSubmit(event)">
+        <div id="name-group" class="form-group" style="display:none;">
+          <label>Full Name</label>
+          <input type="text" id="name-input" placeholder="e.g. Jane Doe">
+        </div>
+        
+        <div class="form-group mb16">
+          <label>Email Address</label>
+          <input type="email" id="email-input" placeholder="name@company.com" required>
+        </div>
+
+        <div class="form-group mb16">
+          <label>Password</label>
+          <input type="password" id="password-input" placeholder="••••••••" required>
+        </div>
+
+        <div id="confirm-password-group" class="form-group mb24" style="display:none;">
+          <label>Confirm Password</label>
+          <input type="password" id="confirm-password-input" placeholder="••••••••">
+        </div>
+
+        <button type="submit" class="btn btn-primary full-w btn-lg" id="submit-btn" style="justify-content:center;">
+          <span id="btn-spinner" style="display:none;" class="spinner-small"></span>
+          <span id="btn-text">Sign In</span>
+        </button>
+      </form>
+    </div>
+
+    <!-- ─── VERIFY VIEW: OTP Input ─── -->
+    <div id="view-verify" class="auth-view" style="display:none;">
+      <button class="back-btn mb16" onclick="Auth.goBack()">← Back</button>
+      <h1>Check your email</h1>
+      <p class="text2 mb24">We've sent a 6-digit verification code to <strong class="text" id="verify-email-display"></strong></p>
+
+      <form id="otp-form" onsubmit="Auth.handleOtpSubmit(event)">
+        <div class="otp-container mb24">
+          <input type="text" class="otp-input" maxlength="1" pattern="[0-9]" inputmode="numeric" required>
+          <input type="text" class="otp-input" maxlength="1" pattern="[0-9]" inputmode="numeric" required>
+          <input type="text" class="otp-input" maxlength="1" pattern="[0-9]" inputmode="numeric" required>
+          <input type="text" class="otp-input" maxlength="1" pattern="[0-9]" inputmode="numeric" required>
+          <input type="text" class="otp-input" maxlength="1" pattern="[0-9]" inputmode="numeric" required>
+          <input type="text" class="otp-input" maxlength="1" pattern="[0-9]" inputmode="numeric" required>
+        </div>
+
+        <button type="submit" class="btn btn-primary full-w btn-lg" id="verify-btn" style="justify-content:center;">
+          <span id="verify-spinner" style="display:none;" class="spinner-small"></span>
+          <span id="verify-text">Verify & Proceed</span>
+        </button>
+      </form>
+
+      <div class="resend-text mt16 center">
+        <span class="text2 text-sm">Didn't receive a code?</span>
+        <button class="btn btn-ghost btn-sm" id="resend-btn" onclick="Auth.resendOtp()" style="border:none;padding:4px 8px;">Resend</button>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<script src="api.js"></script>
+<script src="auth.js"></script>
+</body>
+</html>

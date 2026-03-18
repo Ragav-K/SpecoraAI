@@ -1,0 +1,26 @@
+{
+  "name": "specora-ai",
+  "version": "1.0.0",
+  "description": "Specora AI — Convert client meetings into structured software documentation",
+  "main": "backend/server.js",
+  "scripts": {
+    "start": "node backend/server.js",
+    "dev": "nodemon backend/server.js"
+  },
+  "dependencies": {
+    "axios": "^1.7.0",
+    "bcryptjs": "^3.0.3",
+    "cors": "^2.8.5",
+    "docx": "^8.5.0",
+    "dotenv": "^16.4.0",
+    "express": "^4.18.2",
+    "mongoose": "^8.2.0",
+    "multer": "^1.4.5-lts.1",
+    "nodemailer": "^8.0.2",
+    "openai": "^4.28.0",
+    "pdfkit": "^0.15.0"
+  },
+  "devDependencies": {
+    "nodemon": "^3.1.0"
+  }
+}

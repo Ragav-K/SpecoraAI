@@ -1,0 +1,454 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="Specora AI — Convert client meetings into structured software documentation with AI transcription and requirement extraction.">
+  <title>Specora AI — Meeting to Documentation</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+<div id="notif" class="notif">
+  <span id="notif-icon">✓</span>
+  <span id="notif-msg">Done</span>
+</div>
+
+<div class="app" id="app">
+  <!-- ─── SIDEBAR ─── -->
+  <div class="sidebar" id="sidebar">
+    <div class="sidebar-logo">
+      <div class="logo-icon">◈</div>
+      <div class="logo-text">Specora<span>AI</span></div>
+    </div>
+    <nav class="sidebar-nav">
+      <button class="nav-item" onclick="App.nav('landing')"><span class="nav-icon">◈</span><span>Home</span></button>
+      <button class="nav-item" onclick="App.nav('dashboard')"><span class="nav-icon">⊞</span><span>Dashboard</span></button>
+      <button class="nav-item" onclick="App.nav('new-meeting')"><span class="nav-icon">+</span><span>New Meeting</span></button>
+      <button class="nav-item" onclick="App.nav('meeting-detail')"><span class="nav-icon">◷</span><span>Meeting Detail</span></button>
+      <button class="nav-item" onclick="App.nav('docs')"><span class="nav-icon">≡</span><span>Documentation</span></button>
+      <button class="nav-item" onclick="App.nav('editor')"><span class="nav-icon">✎</span><span>Editor</span></button>
+      <button class="nav-item" onclick="App.nav('export')"><span class="nav-icon">↓</span><span>Export</span></button>
+      
+      <button class="nav-item" onclick="App.toggleSidebarMeetings()" style="margin-top:16px; padding:6px 12px; justify-content:space-between; width:100%; border:none; background:none; cursor:pointer;" title="Toggle Recent Meetings">
+        <div style="font-size:11px;text-transform:uppercase;letter-spacing:0.5px;color:var(--text3);font-weight:600;">Recent Meetings</div>
+        <span id="sidebar-meetings-chevron" style="font-size:10px; color:var(--text3); transition: transform 0.2s;">▼</span>
+      </button>
+      <div id="sidebar-meetings" style="margin-top:4px;display:flex;flex-direction:column;gap:2px;max-height:200px;overflow-y:auto; transition: max-height 0.3s ease-out;">
+        <!-- Dynamic meeting list -->
+      </div>
+    </nav>
+    <div class="sidebar-footer">
+      <div style="display:flex;align-items:center;padding:8px 8px 12px;margin-bottom:8px;border-bottom:1px solid var(--border);">
+        <div style="width:28px;height:28px;border-radius:50%;background:var(--accent-glow);color:var(--accent2);display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:500;margin-right:10px;">👤</div>
+        <div style="flex:1;overflow:hidden;">
+          <div id="sidebar-user-name" style="font-size:13px;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">User</div>
+        </div>
+      </div>
+      <button class="nav-item" style="color:var(--red);font-size:12px;" onclick="App.logout()">
+        <span class="nav-icon">⎋</span><span>Logout</span>
+      </button>
+    </div>
+  </div>
+
+  <!-- ─── MAIN ─── -->
+  <div class="main">
+
+    <!-- ═══ LANDING ═══ -->
+    <div class="page active" id="page-landing">
+      <div class="hero">
+        <div class="hero-tag">⚡ AI-Powered Meeting Assistant</div>
+        <h1>Turn meetings into<br><span>structured specs</span></h1>
+        <p>Record or upload meeting audio. Specora AI transcribes, extracts requirements, and generates complete software documentation automatically.</p>
+        <div class="hero-btns">
+          <button class="btn btn-primary btn-lg" onclick="App.nav('new-meeting')">Start Recording →</button>
+          <button class="btn btn-ghost btn-lg" onclick="App.nav('dashboard')">View Dashboard</button>
+        </div>
+      </div>
+
+      <div class="features-grid">
+        <div class="feature-card">
+          <div class="feature-icon" style="background:var(--accent-glow);">🎙</div>
+          <h3>Live Recording</h3>
+          <p>Record meetings directly from your browser with real-time waveform visualization.</p>
+        </div>
+        <div class="feature-card">
+          <div class="feature-icon" style="background:var(--teal-dim);">📝</div>
+          <h3>AI Transcription</h3>
+          <p>AssemblyAI converts speech to accurate text with speaker context.</p>
+        </div>
+        <div class="feature-card">
+          <div class="feature-icon" style="background:var(--amber-dim);">🤖</div>
+          <h3>Requirement Extraction</h3>
+          <p>GPT-4 analyzes transcripts and extracts structured functional requirements.</p>
+        </div>
+        <div class="feature-card">
+          <div class="feature-icon" style="background:var(--green-dim);">📄</div>
+          <h3>SRS Generation</h3>
+          <p>Full Software Requirement Specification, user stories, and API suggestions.</p>
+        </div>
+        <div class="feature-card">
+          <div class="feature-icon" style="background:var(--red-dim);">✎</div>
+          <h3>Rich Text Editor</h3>
+          <p>Edit AI-generated documentation with a full-featured rich text editor.</p>
+        </div>
+        <div class="feature-card">
+          <div class="feature-icon" style="background:var(--teal-dim);">↓</div>
+          <h3>Export Anywhere</h3>
+          <p>Download as PDF, DOCX, or Markdown. Share with your team instantly.</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- ═══ DASHBOARD ═══ -->
+    <div class="page" id="page-dashboard">
+      <div class="page-header fl-row sb">
+        <div>
+          <h1>Dashboard</h1>
+          <p>All your meetings and generated documentation</p>
+        </div>
+        <button class="btn btn-primary" onclick="App.nav('new-meeting')">+ New Meeting</button>
+      </div>
+
+      <div class="grid-4 mb24">
+        <div class="stat-card"><div class="stat-val text-accent">0</div><div class="stat-label">Total Meetings</div></div>
+        <div class="stat-card"><div class="stat-val text-teal">0</div><div class="stat-label">Transcribed</div></div>
+        <div class="stat-card"><div class="stat-val" style="color:var(--amber)">0</div><div class="stat-label">Docs Generated</div></div>
+        <div class="stat-card"><div class="stat-val" style="color:var(--green)">0</div><div class="stat-label">Exported</div></div>
+      </div>
+
+      <h2 class="mb16">Recent Meetings</h2>
+      <div class="fl-col gap8" id="meetings-list"></div>
+    </div>
+
+    <!-- ═══ NEW MEETING ═══ -->
+    <div class="page" id="page-new-meeting">
+      <div class="page-header">
+        <h1>New Meeting</h1>
+        <p>Record live or upload a pre-recorded audio file</p>
+      </div>
+
+      <!-- Steps -->
+      <div class="steps mb24" id="steps-bar">
+        <div class="step">
+          <div class="step-dot active" id="s1">1</div>
+          <div class="step-line" id="sl1"></div>
+        </div>
+        <div class="step">
+          <div class="step-dot" id="s2">2</div>
+          <div class="step-line" id="sl2"></div>
+        </div>
+        <div class="step">
+          <div class="step-dot" id="s3">3</div>
+          <div class="step-line" id="sl3"></div>
+        </div>
+        <div class="step">
+          <div class="step-dot" id="s4">4</div>
+        </div>
+      </div>
+
+      <!-- Step labels -->
+      <div class="fl-row mb24" style="justify-content:space-between;padding:0">
+        <span class="step-label text-sm text2">Audio Input</span>
+        <span class="step-label text-sm text2">Transcription</span>
+        <span class="step-label text-sm text2">AI Analysis</span>
+        <span class="step-label text-sm text2">Documentation</span>
+      </div>
+
+      <div class="rec-container">
+        <!-- Tab: Record vs Upload -->
+        <div class="tab-bar" id="input-tabs">
+          <button class="tab-btn active" onclick="App.switchInputTab('record',this)">🎙 Live Record</button>
+          <button class="tab-btn" onclick="App.switchInputTab('upload',this)">⬆ Upload Audio</button>
+        </div>
+
+        <!-- RECORD TAB -->
+        <div id="tab-record">
+          <div class="card mb16">
+            <div class="fl-row sb mb16">
+              <div class="rec-status">
+                <div class="rec-dot" id="rec-dot"></div>
+                <span id="rec-status-text">Ready to record</span>
+              </div>
+              <span class="badge badge-purple" id="rec-badge">Idle</span>
+            </div>
+
+            <div class="rec-timer" id="rec-timer">00:00:00</div>
+
+            <canvas id="waveform-canvas"></canvas>
+
+            <div class="fl-row mt16" style="justify-content:center; gap:12px;">
+              <button class="btn btn-success" id="btn-start" onclick="Recorder.startRecording()">▶ Start</button>
+              <button class="btn btn-ghost" id="btn-pause" onclick="Recorder.pauseRecording()" disabled>⏸ Pause</button>
+              <button class="btn btn-danger" id="btn-stop" onclick="Recorder.stopRecording()" disabled>⏹ Stop</button>
+            </div>
+          </div>
+
+          <div class="card" id="rec-preview" style="display:none;">
+            <h3 class="mb8">Recording saved</h3>
+            <div class="audio-player mt8" id="audio-player-rec">
+              <button class="play-btn" onclick="App.togglePlay('rec-audio')">▶</button>
+              <div style="flex:1;">
+                <div class="progress-bar"><div class="progress-fill" id="rec-progress" style="width:0%"></div></div>
+                <div class="fl-row sb mt8">
+                  <span class="text-sm text2" id="rec-time-cur">0:00</span>
+                  <span class="text-sm text2" id="rec-time-dur">0:00</span>
+                </div>
+              </div>
+            </div>
+            <audio id="rec-audio" style="display:none;"></audio>
+          </div>
+        </div>
+
+        <!-- UPLOAD TAB -->
+        <div id="tab-upload" style="display:none;">
+          <div class="upload-zone" id="upload-zone"
+               onclick="document.getElementById('file-input').click()"
+               ondragover="event.preventDefault();this.classList.add('drag-over')"
+               ondragleave="this.classList.remove('drag-over')"
+               ondrop="App.handleDrop(event)">
+            <div style="font-size:32px;margin-bottom:12px;">⬆</div>
+            <h3 class="mb8">Drop audio file here or click to browse</h3>
+            <p class="text2 text-sm">Supports MP3, WAV, M4A, WebM — up to 200MB</p>
+            <input type="file" id="file-input" accept=".mp3,.wav,.m4a,.webm,audio/*" style="display:none;" onchange="App.handleFileSelect(event)">
+          </div>
+          <div class="card mt16" id="upload-preview" style="display:none;">
+            <div class="fl-row sb">
+              <div>
+                <h3 id="upload-filename">file.mp3</h3>
+                <span class="text-sm text2" id="upload-size">0 MB</span>
+              </div>
+              <span class="badge badge-green">Ready</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Project name input -->
+        <div class="card mt16">
+          <label>Project / Meeting Name</label>
+          <input type="text" id="project-name" placeholder="e.g. E-commerce Platform — Client Kickoff">
+        </div>
+
+        <!-- AI Processing -->
+        <div class="mt16">
+          <button class="btn btn-primary full-w" id="process-btn" onclick="App.processAudio()">🤖 Process with AI</button>
+        </div>
+
+        <!-- Processing status -->
+        <div class="card mt16" id="processing-card" style="display:none;">
+          <div class="fl-col gap16" id="processing-steps"></div>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- ═══ MEETING DETAIL ═══ -->
+    <div class="page" id="page-meeting-detail">
+      <div class="page-header fl-row sb">
+        <div>
+          <h1 id="detail-title">Meeting Detail</h1>
+          <div class="fl-row gap8 mt8">
+            <span class="badge badge-teal">Transcribed</span>
+            <span class="badge badge-purple">Analyzed</span>
+          </div>
+        </div>
+        <div class="fl-row gap8">
+          <button class="btn btn-ghost btn-sm" onclick="App.nav('docs')">View Docs</button>
+          <button class="btn btn-primary btn-sm" onclick="App.nav('export')">Export</button>
+          <button class="btn btn-danger btn-sm" onclick="App.deleteMeeting()" title="Delete Meeting">🗑</button>
+        </div>
+      </div>
+
+      <!-- Audio player -->
+      <div class="card mb16">
+        <h3 class="mb12">Audio Playback</h3>
+        <div id="detail-audio-container" style="display:none; padding-top: 8px;">
+          <audio id="detail-audio-player" controls style="width: 100%; outline: none; border-radius: 8px;"></audio>
+          <div class="mt8">
+            <a id="detail-audio-download" href="#" download class="btn btn-ghost btn-sm">↓ Download Audio</a>
+          </div>
+        </div>
+        <p id="detail-no-audio" class="text3 text-sm">No audio available for this meeting.</p>
+      </div>
+
+      <div class="grid-2 gap16">
+        <!-- Transcript -->
+        <div>
+          <h2 class="mb12">Transcript</h2>
+          <div class="transcript-box" id="detail-transcript">
+            <p class="text3">No transcript available. Process a meeting first.</p>
+          </div>
+        </div>
+
+        <!-- Extracted Requirements -->
+        <div>
+          <h2 class="mb12">Extracted Requirements</h2>
+          <div class="card card-sm" id="req-card">
+            <div class="fl-row sb mb12">
+              <span class="text-sm text2">AI extracted</span>
+              <span class="badge badge-purple">GPT-4</span>
+            </div>
+            <div id="req-list"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Key Entities -->
+      <div class="card mt16">
+        <h3 class="mb12">Entities Detected</h3>
+        <div class="fl-row" style="flex-wrap:wrap;gap:8px;" id="entities-list"></div>
+      </div>
+    </div>
+
+    <!-- ═══ DOCUMENTATION ═══ -->
+    <div class="page" id="page-docs">
+      <div class="page-header fl-row sb">
+        <div>
+          <h1>Documentation</h1>
+          <p>AI-generated software requirement specification</p>
+        </div>
+        <div class="fl-row gap8">
+          <button class="btn btn-ghost btn-sm" onclick="App.nav('editor')">✎ Edit</button>
+          <button class="btn btn-primary btn-sm" onclick="App.nav('export')">↓ Export</button>
+        </div>
+      </div>
+
+      <div class="tab-bar" id="doc-tabs">
+        <button class="tab-btn active" onclick="App.switchDocTab('srs',this)">SRS</button>
+        <button class="tab-btn" onclick="App.switchDocTab('stories',this)">User Stories</button>
+        <button class="tab-btn" onclick="App.switchDocTab('api',this)">API</button>
+        <button class="tab-btn" onclick="App.switchDocTab('db',this)">Database</button>
+        <button class="tab-btn" onclick="App.switchDocTab('arch',this)">Architecture</button>
+      </div>
+
+      <div id="doc-srs" class="doc-content"></div>
+      <div id="doc-stories" class="doc-content" style="display:none;"></div>
+      <div id="doc-api" class="doc-content" style="display:none;"></div>
+      <div id="doc-db" class="doc-content" style="display:none;"></div>
+      <div id="doc-arch" class="doc-content" style="display:none;"></div>
+    </div>
+
+    <!-- ═══ EDITOR ═══ -->
+    <div class="page" id="page-editor">
+      <div class="page-header fl-row sb">
+        <div>
+          <h1>Document Editor</h1>
+          <p>Edit and refine AI-generated documentation</p>
+        </div>
+        <div class="fl-row gap8">
+          <button class="btn btn-ghost btn-sm" onclick="App.saveEditor()">Save Draft</button>
+          <button class="btn btn-primary btn-sm" onclick="App.nav('export')">Export →</button>
+        </div>
+      </div>
+
+      <div class="grid-2 gap16" style="align-items:start;">
+        <div>
+          <h3 class="mb12">Document Selector</h3>
+          <div class="fl-col gap8 mb16">
+            <button class="btn btn-ghost full-w" style="justify-content:flex-start;text-align:left;" onclick="App.loadEditorDoc('srs')">📄 Software Requirements Spec</button>
+            <button class="btn btn-ghost full-w" style="justify-content:flex-start;text-align:left;" onclick="App.loadEditorDoc('stories')">👤 User Stories</button>
+            <button class="btn btn-ghost full-w" style="justify-content:flex-start;text-align:left;" onclick="App.loadEditorDoc('api')">⚡ API Endpoints</button>
+            <button class="btn btn-ghost full-w" style="justify-content:flex-start;text-align:left;" onclick="App.loadEditorDoc('db')">🗄 Database Schema</button>
+            <button class="btn btn-ghost full-w" style="justify-content:flex-start;text-align:left;" onclick="App.loadEditorDoc('arch')">🏗 Architecture Notes</button>
+          </div>
+
+          <div class="card card-sm">
+            <h3 class="mb8">✨ AI Assist</h3>
+            <p class="text-sm text2 mb12">Ask AI to improve or expand a section</p>
+            <textarea id="ai-assist-input" placeholder="e.g. Add more detail to the authentication section..." style="min-height:70px;" class="mb8"></textarea>
+            <button class="btn btn-primary btn-sm full-w" onclick="App.aiAssist()">
+              <span id="ai-assist-spinner" style="display:none;"><span class="spinner"></span></span>
+              Improve with AI
+            </button>
+          </div>
+        </div>
+
+        <div>
+          <h3 class="mb12" id="editor-title">Software Requirements Spec</h3>
+          <div class="editor-toolbar">
+            <button onclick="App.fmt('bold')"><b>B</b></button>
+            <button onclick="App.fmt('italic')"><i>I</i></button>
+            <button onclick="App.fmt('underline')"><u>U</u></button>
+            <button onclick="App.fmt('insertUnorderedList')">≡</button>
+            <button onclick="App.fmt('insertOrderedList')">1.</button>
+            <button onclick="App.fmt('formatBlock','h2')">H2</button>
+            <button onclick="App.fmt('formatBlock','p')">P</button>
+          </div>
+          <div class="rich-editor" id="rich-editor" contenteditable="true" style="border-radius:0 0 var(--r) var(--r);"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ═══ EXPORT ═══ -->
+    <div class="page" id="page-export">
+      <div class="page-header">
+        <h1>Export Documentation</h1>
+        <p>Download your documentation in your preferred format</p>
+      </div>
+
+      <div class="grid-3 gap16 mb24">
+        <div class="card" style="text-align:center; cursor:pointer;" onclick="App.exportAs('pdf')">
+          <div style="font-size:40px;margin-bottom:12px;">📕</div>
+          <h3 class="mb4">PDF</h3>
+          <p class="text-sm text2 mb12">Formatted document, ideal for sharing with clients</p>
+          <button class="btn btn-primary btn-sm">Download PDF</button>
+        </div>
+        <div class="card" style="text-align:center; cursor:pointer;" onclick="App.exportAs('docx')">
+          <div style="font-size:40px;margin-bottom:12px;">📘</div>
+          <h3 class="mb4">DOCX</h3>
+          <p class="text-sm text2 mb12">Editable Word document for further customization</p>
+          <button class="btn btn-ghost btn-sm">Download DOCX</button>
+        </div>
+        <div class="card" style="text-align:center; cursor:pointer;" onclick="App.exportAs('md')">
+          <div style="font-size:40px;margin-bottom:12px;">📝</div>
+          <h3 class="mb4">Markdown</h3>
+          <p class="text-sm text2 mb12">Plain text for GitHub, Notion, or any docs platform</p>
+          <button class="btn btn-teal btn-sm">Download .md</button>
+        </div>
+      </div>
+
+      <div class="card">
+        <h3 class="mb16">Export Settings</h3>
+        <div class="fl-col gap16">
+          <div>
+            <label>Include sections</label>
+            <div class="fl-col gap8 mt8">
+              <label style="display:flex;align-items:center;gap:8px;cursor:pointer;">
+                <input type="checkbox" checked style="width:auto;"> Software Requirements Spec (SRS)
+              </label>
+              <label style="display:flex;align-items:center;gap:8px;cursor:pointer;">
+                <input type="checkbox" checked style="width:auto;"> User Stories & Acceptance Criteria
+              </label>
+              <label style="display:flex;align-items:center;gap:8px;cursor:pointer;">
+                <input type="checkbox" checked style="width:auto;"> API Endpoint Suggestions
+              </label>
+              <label style="display:flex;align-items:center;gap:8px;cursor:pointer;">
+                <input type="checkbox" checked style="width:auto;"> Database Schema
+              </label>
+              <label style="display:flex;align-items:center;gap:8px;cursor:pointer;">
+                <input type="checkbox" style="width:auto;"> Raw Transcript
+              </label>
+            </div>
+          </div>
+          <div>
+            <label>Document title</label>
+            <input type="text" id="export-title" placeholder="Software Requirements Specification">
+          </div>
+          <div>
+            <label>Author / Company</label>
+            <input type="text" id="export-author" placeholder="Acme Corp">
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div><!-- /.main -->
+</div><!-- /.app -->
+
+<!-- Scripts: loaded in dependency order -->
+<script src="api.js"></script>
+<script src="recorder.js"></script>
+<script src="app.js"></script>
+
+</body>
+</html>

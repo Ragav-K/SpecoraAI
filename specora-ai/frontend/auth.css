@@ -1,0 +1,148 @@
+/* ── Auth Page Specific Styles ── */
+
+.auth-body {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 100vh;
+  background: var(--bg);
+  background-image: 
+    radial-gradient(circle at 15% 50%, rgba(108, 99, 255, 0.08) 0%, transparent 50%),
+    radial-gradient(circle at 85% 30%, rgba(0, 212, 170, 0.05) 0%, transparent 50%);
+  padding: 20px;
+}
+
+.auth-container {
+  width: 100%;
+  max-width: 440px;
+}
+
+.auth-card {
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  padding: 40px;
+  box-shadow: 0 20px 40px rgba(0,0,0,0.4);
+  position: relative;
+  overflow: hidden;
+}
+
+/* Accent line at top */
+.auth-card::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 4px;
+  background: linear-gradient(90deg, var(--accent), var(--teal));
+}
+
+.auth-logo {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  margin-bottom: 40px;
+}
+
+.auth-logo .logo-icon {
+  width: 36px; height: 36px;
+  font-size: 18px;
+  border-radius: 10px;
+}
+
+.auth-logo .logo-text {
+  font-size: 20px;
+}
+
+/* Form Styles */
+.form-group {
+  margin-bottom: 20px;
+}
+
+.form-group label {
+  font-weight: 500;
+}
+
+.form-group input {
+  padding: 12px 16px;
+  font-size: 15px;
+  background: var(--bg);
+}
+
+.form-group input:focus {
+  background: var(--bg3);
+  box-shadow: 0 0 0 3px var(--accent-glow);
+}
+
+/* OTP Input Specifics */
+.otp-container {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.otp-input {
+  width: 100%;
+  aspect-ratio: 1;
+  text-align: center;
+  font-size: 24px;
+  font-family: var(--mono);
+  font-weight: 500;
+  border-radius: 12px;
+  background: var(--bg);
+  border: 1px solid var(--border2);
+  color: var(--text);
+  padding: 0;
+  transition: all 0.2s;
+}
+
+.otp-input:focus {
+  border-color: var(--accent);
+  background: var(--bg3);
+  box-shadow: 0 0 0 3px var(--accent-glow);
+  outline: none;
+}
+
+/* View transitions */
+.auth-view {
+  animation: fadeIn 0.3s ease-out forwards;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.back-btn {
+  background: none;
+  border: none;
+  color: var(--text2);
+  font-family: var(--font);
+  font-size: 13.5px;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  padding: 0;
+  transition: color 0.15s;
+}
+
+.back-btn:hover {
+  color: var(--text);
+}
+
+/* Spinner for buttons */
+.spinner-small {
+  width: 16px; height: 16px;
+  border: 2px solid rgba(255,255,255,0.3);
+  border-top-color: #fff;
+  border-radius: 50%;
+  animation: spin 0.7s linear infinite;
+  display: inline-block;
+  margin-right: 8px;
+}
+
+@media (max-width: 480px) {
+  .auth-card {
+    padding: 32px 24px;
+  }
+}
