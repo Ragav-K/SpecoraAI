@@ -3,7 +3,9 @@
  * All backend communication in one place
  */
 const API = (() => {
-  const BASE = '/api';
+  const BASE = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
+    ? 'http://localhost:5000/api'
+    : 'https://specoraai.onrender.com/api';
 
   async function request(url, options = {}) {
     try {
