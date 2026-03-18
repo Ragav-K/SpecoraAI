@@ -1,7 +1,7 @@
 {
   "hosting": {
     "site": "specoraai",
-    "public": "public",
+    "public": "specora-ai/frontend",
     "ignore": [
       "firebase.json",
       "**/.*",
