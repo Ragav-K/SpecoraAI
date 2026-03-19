@@ -53,6 +53,10 @@
           <input type="password" id="confirm-password-input" placeholder="••••••••">
         </div>
 
+        <div class="form-helper-row" id="forgot-link">
+          <button type="button" class="link-btn" onclick="Auth.openForgotPassword()">Forgot password?</button>
+        </div>
+
         <button type="submit" class="btn btn-primary full-w btn-lg" id="submit-btn" style="justify-content:center;">
           <span id="btn-spinner" style="display:none;" class="spinner-small"></span>
           <span id="btn-text">Sign In</span>
@@ -86,6 +90,48 @@
         <span class="text2 text-sm">Didn't receive a code?</span>
         <button class="btn btn-ghost btn-sm" id="resend-btn" onclick="Auth.resendOtp()" style="border:none;padding:4px 8px;">Resend</button>
       </div>
+    </div>
+
+    <!-- ─── FORGOT PASSWORD VIEW ─── -->
+    <div id="view-forgot" class="auth-view" style="display:none;">
+      <button class="back-btn mb16" onclick="Auth.exitForgotPassword()">← Back to login</button>
+      <h1>Reset your password</h1>
+      <p class="text2 mb24" id="forgot-subtitle">Enter your email to receive a reset code.</p>
+
+      <form id="forgot-form" onsubmit="Auth.handleForgotSubmit(event)">
+        <div class="form-group mb16">
+          <label>Email Address</label>
+          <input type="email" id="forgot-email-input" placeholder="name@company.com" required>
+        </div>
+
+        <div id="forgot-otp-section" class="form-group mb16" style="display:none;">
+          <label>Verification Code</label>
+          <div class="otp-container">
+            <input type="text" class="otp-input" maxlength="1" pattern="[0-9]" inputmode="numeric">
+            <input type="text" class="otp-input" maxlength="1" pattern="[0-9]" inputmode="numeric">
+            <input type="text" class="otp-input" maxlength="1" pattern="[0-9]" inputmode="numeric">
+            <input type="text" class="otp-input" maxlength="1" pattern="[0-9]" inputmode="numeric">
+            <input type="text" class="otp-input" maxlength="1" pattern="[0-9]" inputmode="numeric">
+            <input type="text" class="otp-input" maxlength="1" pattern="[0-9]" inputmode="numeric">
+          </div>
+        </div>
+
+        <div id="forgot-password-section" style="display:none;">
+          <div class="form-group mb16">
+            <label>New Password</label>
+            <input type="password" id="forgot-new-password-input" placeholder="••••••••">
+          </div>
+          <div class="form-group mb24">
+            <label>Confirm New Password</label>
+            <input type="password" id="forgot-confirm-password-input" placeholder="••••••••">
+          </div>
+        </div>
+
+        <button type="submit" class="btn btn-primary full-w btn-lg" id="forgot-submit-btn" style="justify-content:center;">
+          <span id="forgot-spinner" style="display:none;" class="spinner-small"></span>
+          <span id="forgot-submit-text">Send Reset Code</span>
+        </button>
+      </form>
     </div>
 
   </div>

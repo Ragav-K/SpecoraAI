@@ -1,5 +1,5 @@
 const User = require('../models/User');
-const { sendOTPEmail } = require('../services/emailService');
+const { sendOTPEmail, sendPasswordResetEmail } = require('../services/emailService');
 const bcrypt = require('bcryptjs');
 
 // Helper to generate 6-digit OTP
@@ -131,5 +131,79 @@ exports.login = async (req, res) => {
   } catch (error) {
     console.error('Login error:', error);
     res.status(500).json({ error: 'Server error during login' });
+  }
+};
+
+// ── Forgot Password: Request OTP ────────────────────────────────┐
+exports.requestPasswordReset = async (req, res) => {
+  try {
+    const { email } = req.body;
+
+    if (!email) {
+      return res.status(400).json({ error: 'Email is required' });
+    }
+
+    const user = await User.findOne({ email });
+
+    if (!user || !user.isVerified) {
+      return res.status(404).json({ error: 'No verified account found with this email' });
+    }
+
+    const otp = generateOTP();
+    const otpExpiry = new Date();
+    otpExpiry.setMinutes(otpExpiry.getMinutes() + 10);
+
+    user.resetOtp = otp;
+    user.resetOtpExpiry = otpExpiry;
+    await user.save();
+
+    await sendPasswordResetEmail(email, otp, user.name);
+
+    res.status(200).json({ message: 'Password reset code sent to ' + email });
+  } catch (error) {
+    console.error('Password reset request error:', error);
+    res.status(500).json({ error: 'Server error while sending reset code' });
+  }
+};
+
+// ── Forgot Password: Reset ──────────────────────────────────────┐
+exports.resetPassword = async (req, res) => {
+  try {
+    const { email, otp, newPassword } = req.body;
+
+    if (!email || !otp || !newPassword) {
+      return res.status(400).json({ error: 'Email, OTP, and new password are required' });
+    }
+
+    if (newPassword.length < 6) {
+      return res.status(400).json({ error: 'Password must be at least 6 characters long' });
+    }
+
+    const user = await User.findOne({ email });
+
+    if (!user || !user.isVerified) {
+      return res.status(404).json({ error: 'No verified account found with this email' });
+    }
+
+    if (!user.resetOtp || user.resetOtp !== otp) {
+      return res.status(400).json({ error: 'Invalid OTP' });
+    }
+
+    if (!user.resetOtpExpiry || new Date() > user.resetOtpExpiry) {
+      return res.status(400).json({ error: 'OTP has expired. Please request a new code.' });
+    }
+
+    const salt = await bcrypt.genSalt(10);
+    const hashedPassword = await bcrypt.hash(newPassword, salt);
+
+    user.password = hashedPassword;
+    user.resetOtp = null;
+    user.resetOtpExpiry = null;
+    await user.save();
+
+    res.status(200).json({ message: 'Password reset successful' });
+  } catch (error) {
+    console.error('Password reset error:', error);
+    res.status(500).json({ error: 'Server error during password reset' });
   }
 };

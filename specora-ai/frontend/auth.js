@@ -4,6 +4,8 @@
 const Auth = (() => {
   let mode = 'login'; // 'login' | 'signup'
   let currentEmail = '';
+  let forgotStep = 'email'; // 'email' | 'reset'
+  let forgotEmail = '';
 
   // ── Initialization ──
   function init() {
@@ -30,6 +32,7 @@ const Auth = (() => {
     const title = document.getElementById('auth-title');
     const subtitle = document.getElementById('auth-subtitle');
     const btnText = document.getElementById('btn-text');
+    const forgotLink = document.getElementById('forgot-link');
 
     if (mode === 'signup') {
       nameGroup.style.display = 'block';
@@ -39,6 +42,7 @@ const Auth = (() => {
       title.textContent = 'Create an account';
       subtitle.textContent = 'Enter your details to get started';
       btnText.textContent = 'Create Account';
+      if (forgotLink) forgotLink.style.display = 'none';
     } else {
       nameGroup.style.display = 'none';
       nameInput.required = false;
@@ -46,13 +50,57 @@ const Auth = (() => {
       confirmPasswordInput.required = false;
       title.textContent = 'Welcome back';
       subtitle.textContent = 'Enter your email to sign in';
-      btnText.textContent = 'Sign In';    
+      btnText.textContent = 'Sign In';
+      if (forgotLink) forgotLink.style.display = 'flex';
     }
   }
 
   function goBack() {
     document.getElementById('view-verify').style.display = 'none';
     document.getElementById('view-form').style.display = 'block';
+  }
+
+  function openForgotPassword() {
+    resetForgotView(true);
+    const loginEmail = document.getElementById('email-input').value.trim();
+    if (loginEmail) {
+      document.getElementById('forgot-email-input').value = loginEmail;
+    }
+    document.getElementById('view-form').style.display = 'none';
+    document.getElementById('view-verify').style.display = 'none';
+    document.getElementById('view-forgot').style.display = 'block';
+    document.getElementById('forgot-email-input').focus();
+  }
+
+  function exitForgotPassword() {
+    resetForgotView();
+    document.getElementById('view-forgot').style.display = 'none';
+    document.getElementById('view-verify').style.display = 'none';
+    document.getElementById('view-form').style.display = 'block';
+  }
+
+  function resetForgotView(keepEmail = false) {
+    forgotStep = 'email';
+    forgotEmail = '';
+    const emailInput = document.getElementById('forgot-email-input');
+    const newPasswordInput = document.getElementById('forgot-new-password-input');
+    const confirmPasswordInput = document.getElementById('forgot-confirm-password-input');
+    if (!keepEmail) {
+      emailInput.value = '';
+    }
+    emailInput.readOnly = false;
+    document.getElementById('forgot-subtitle').textContent = 'Enter your email to receive a reset code.';
+    document.getElementById('forgot-otp-section').style.display = 'none';
+    document.getElementById('forgot-password-section').style.display = 'none';
+    newPasswordInput.value = '';
+    confirmPasswordInput.value = '';
+    newPasswordInput.required = false;
+    confirmPasswordInput.required = false;
+    document
+      .querySelectorAll('#forgot-otp-section .otp-input')
+      .forEach((input) => (input.value = ''));
+    const submitText = document.getElementById('forgot-submit-text');
+    if (submitText) submitText.textContent = 'Send Reset Code';
   }
 
   // ── Handlers ──
@@ -83,7 +131,7 @@ const Auth = (() => {
         document.getElementById('view-form').style.display = 'none';
         document.getElementById('view-verify').style.display = 'block';
         document.getElementById('verify-email-display').textContent = email;
-        setTimeout(() => document.querySelector('.otp-input').focus(), 100);
+        setTimeout(() => document.querySelector('#view-verify .otp-input')?.focus(), 100);
         showNotif(`Verification code sent to ${email}`, '✉');
       } else {
         const data = await login(email, password);
@@ -102,11 +150,93 @@ const Auth = (() => {
     }
   }
 
+  async function handleForgotSubmit(e) {
+    e.preventDefault();
+
+    const emailInput = document.getElementById('forgot-email-input');
+    const email = emailInput.value.trim().toLowerCase();
+    const submitBtn = document.getElementById('forgot-submit-btn');
+    const btnText = document.getElementById('forgot-submit-text');
+    const spinner = document.getElementById('forgot-spinner');
+    const otpInputs = document.querySelectorAll('#forgot-otp-section .otp-input');
+    const newPasswordInput = document.getElementById('forgot-new-password-input');
+    const confirmPasswordInput = document.getElementById('forgot-confirm-password-input');
+
+    if (!email) {
+      showNotif('Please enter your email', '!');
+      return;
+    }
+
+    try {
+      setLoading(submitBtn, btnText, spinner, true);
+
+      if (forgotStep === 'email') {
+        await API.requestPasswordReset(email);
+        forgotEmail = email;
+        forgotStep = 'reset';
+        document.getElementById('forgot-subtitle').textContent = `Enter the code sent to ${email} and choose a new password.`;
+        document.getElementById('forgot-otp-section').style.display = 'block';
+        document.getElementById('forgot-password-section').style.display = 'block';
+        newPasswordInput.required = true;
+        confirmPasswordInput.required = true;
+        otpInputs.forEach((input) => (input.value = ''));
+        emailInput.readOnly = true;
+        showNotif(`Reset code sent to ${email}`, '✉');
+        setTimeout(() => document.querySelector('#forgot-otp-section .otp-input')?.focus(), 100);
+      } else {
+        if (email !== forgotEmail) {
+          showNotif('Email changed. Please request a new code.', '!');
+          resetForgotView();
+          return;
+        }
+
+        let otp = '';
+        otpInputs.forEach((input) => (otp += input.value));
+
+        if (otp.length !== 6) {
+          showNotif('Please enter all 6 digits', '!');
+          return;
+        }
+
+        const newPassword = newPasswordInput.value;
+        const confirmPassword = confirmPasswordInput.value;
+
+        if (newPassword !== confirmPassword) {
+          showNotif('Passwords do not match', '!');
+          return;
+        }
+
+        if (newPassword.length < 6) {
+          showNotif('Password must be at least 6 characters', '!');
+          return;
+        }
+
+        await API.resetPassword(email, otp, newPassword);
+        showNotif('Password updated. Please sign in.', '✓');
+        exitForgotPassword();
+        document.getElementById('email-input').value = email;
+        document.getElementById('password-input').value = '';
+        mode = 'login';
+        switchTab('login');
+        document.getElementById('password-input').focus();
+      }
+    } catch (error) {
+      showNotif(error.message, '!');
+      if (forgotStep === 'reset') {
+        otpInputs.forEach((input) => (input.value = ''));
+        document.querySelector('#forgot-otp-section .otp-input')?.focus();
+      }
+    } finally {
+      const nextText = forgotStep === 'reset' ? 'Update Password' : 'Send Reset Code';
+      setLoading(submitBtn, btnText, spinner, false, nextText);
+    }
+  }
+
   async function handleOtpSubmit(e) {
     e.preventDefault();
     
     // Gather OTP from inputs
-    const inputs = document.querySelectorAll('.otp-input');
+    const inputs = document.querySelectorAll('#view-verify .otp-input');
     let otp = '';
     inputs.forEach(input => otp += input.value);
 
@@ -196,38 +326,38 @@ const Auth = (() => {
   // ── Utilities ──
 
   function setupOtpInputs() {
-    const inputs = document.querySelectorAll('.otp-input');
-    
-    inputs.forEach((input, index) => {
-      // Auto-advance on input
-      input.addEventListener('input', (e) => {
-        if (e.target.value.length === 1) {
-          if (index < inputs.length - 1) inputs[index + 1].focus();
-        }
-      });
+    document.querySelectorAll('.otp-container').forEach((container) => {
+      const inputs = Array.from(container.querySelectorAll('.otp-input'));
 
-      // Handle backspace
-      input.addEventListener('keydown', (e) => {
-        if (e.key === 'Backspace' && !e.target.value && index > 0) {
-          inputs[index - 1].focus();
-        }
-      });
+      inputs.forEach((input, index) => {
+        input.addEventListener('input', (e) => {
+          const value = e.target.value.replace(/\D/g, '').charAt(0) || '';
+          e.target.value = value;
+          if (value && index < inputs.length - 1) {
+            inputs[index + 1].focus();
+          }
+        });
 
-      // Handle paste
-      input.addEventListener('paste', (e) => {
-        e.preventDefault();
-        const pastedData = e.clipboardData.getData('text').replace(/\D/g, '').slice(0, 6);
-        if (pastedData) {
-          for (let i = 0; i < pastedData.length; i++) {
-            if (inputs[i]) {
-              inputs[i].value = pastedData[i];
-              inputs[i].dispatchEvent(new Event('input'));
-            }
+        input.addEventListener('keydown', (e) => {
+          if (e.key === 'Backspace' && !e.target.value && index > 0) {
+            inputs[index - 1].focus();
           }
-          if (pastedData.length === 6) {
-            document.getElementById('verify-btn').focus();
+        });
+
+        input.addEventListener('paste', (e) => {
+          e.preventDefault();
+          const pastedData = e.clipboardData.getData('text').replace(/\D/g, '').slice(0, inputs.length);
+          if (!pastedData) return;
+
+          inputs.forEach((otpInput, idx) => {
+            otpInput.value = pastedData[idx] || '';
+          });
+
+          if (pastedData.length === inputs.length) {
+            const submitBtn = container.closest('form')?.querySelector('button[type="submit"]');
+            submitBtn?.focus();
           }
-        }
+        });
       });
     });
   }
@@ -251,7 +381,17 @@ const Auth = (() => {
     setTimeout(() => el.classList.remove('show'), 3000);
   }
 
-  return { init, switchTab, goBack, handleAuthSubmit, handleOtpSubmit, resendOtp };
+  return { 
+    init, 
+    switchTab, 
+    goBack, 
+    handleAuthSubmit, 
+    handleOtpSubmit, 
+    resendOtp,
+    openForgotPassword,
+    exitForgotPassword,
+    handleForgotSubmit,
+  };
 })();
 
 document.addEventListener('DOMContentLoaded', Auth.init);

@@ -74,6 +74,27 @@
   box-shadow: 0 0 0 3px var(--accent-glow);
 }
 
+.form-helper-row {
+  display: flex;
+  justify-content: flex-end;
+  margin: -8px 0 24px;
+}
+
+.link-btn {
+  background: none;
+  border: none;
+  color: var(--accent);
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  padding: 0;
+  transition: color 0.15s;
+}
+
+.link-btn:hover {
+  color: #fff;
+}
+
 /* OTP Input Specifics */
 .otp-container {
   display: flex;

@@ -165,6 +165,14 @@ const API = (() => {
     return request('/auth/login', { method: 'POST', body: JSON.stringify({ email, password }) });
   }
 
+  async function requestPasswordReset(email) {
+    return request('/auth/forgot-password', { method: 'POST', body: JSON.stringify({ email }) });
+  }
+
+  async function resetPassword(email, otp, newPassword) {
+    return request('/auth/reset-password', { method: 'POST', body: JSON.stringify({ email, otp, newPassword }) });
+  }
+
   return {
     createMeeting,
     getMeetings,
@@ -177,5 +185,7 @@ const API = (() => {
     signup,
     verifyOtp,
     login,
+    requestPasswordReset,
+    resetPassword,
   };
 })();
