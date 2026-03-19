@@ -2,11 +2,21 @@ const axios = require('axios');
 const fs = require('fs');
 
 const ASSEMBLYAI_BASE = 'https://api.assemblyai.com/v2';
+const isMock = process.env.MOCK_AI === 'true';
+
+const MOCK_TRANSCRIPT = 'This is a mock transcript for Specora AI testing.';
 
 /**
  * Get authorization headers for AssemblyAI API
  */
+function ensureApiKey() {
+  if (!process.env.ASSEMBLYAI_API_KEY) {
+    throw new Error('ASSEMBLYAI_API_KEY is not configured');
+  }
+}
+
 function getHeaders() {
+  ensureApiKey();
   return {
     authorization: process.env.ASSEMBLYAI_API_KEY,
     'content-type': 'application/json',
@@ -14,19 +24,27 @@ function getHeaders() {
 }
 
 /**
- * Upload an audio file to AssemblyAI and get a hosted URL
- * @param {string} filePath - Local path to the audio file
- * @returns {string} Hosted audio URL from AssemblyAI
+ * Upload an audio file to AssemblyAI and get a hosted URL.
+ * Streams the file to avoid loading it fully into memory.
  */
 async function uploadAudio(filePath) {
-  const data = fs.readFileSync(filePath);
+  if (isMock) {
+    return 'mock_upload_url';
+  }
 
-  const response = await axios.post(`${ASSEMBLYAI_BASE}/upload`, data, {
+  ensureApiKey();
+  const stream = fs.createReadStream(filePath);
+
+  const response = await axios({
+    method: 'post',
+    url: `${ASSEMBLYAI_BASE}/upload`,
     headers: {
       authorization: process.env.ASSEMBLYAI_API_KEY,
-      'content-type': 'application/octet-stream',
       'transfer-encoding': 'chunked',
     },
+    maxContentLength: Infinity,
+    maxBodyLength: Infinity,
+    data: stream,
   });
 
   return response.data.upload_url;
@@ -34,10 +52,12 @@ async function uploadAudio(filePath) {
 
 /**
  * Start a transcription job on AssemblyAI
- * @param {string} audioUrl - URL of the audio file (AssemblyAI hosted or external)
- * @returns {string} Transcription ID for polling
  */
 async function startTranscription(audioUrl) {
+  if (isMock) {
+    return 'mock_transcript_id';
+  }
+
   const response = await axios.post(
     `${ASSEMBLYAI_BASE}/transcript`,
     { audio_url: audioUrl },
@@ -47,29 +67,45 @@ async function startTranscription(audioUrl) {
   return response.data.id;
 }
 
-/**
- * Poll AssemblyAI until transcription completes
- * @param {string} transcriptId - ID from startTranscription
- * @returns {string} Completed transcript text
- */
+function pollTranscript(transcriptId, timeoutMs = 5 * 60 * 1000, intervalMs = 3000) {
+  return new Promise((resolve, reject) => {
+    if (isMock) {
+      return resolve(MOCK_TRANSCRIPT);
+    }
+
+    const deadline = Date.now() + timeoutMs;
+
+    const poll = async () => {
+      try {
+        if (Date.now() > deadline) {
+          return reject(new Error('Transcription polling timed out'));
+        }
+
+        const response = await axios.get(`${ASSEMBLYAI_BASE}/transcript/${transcriptId}`, {
+          headers: getHeaders(),
+        });
+        const { status, text, error } = response.data;
+
+        if (status === 'completed') {
+          return resolve(text);
+        }
+
+        if (status === 'error') {
+          return reject(new Error(`Transcription failed: ${error}`));
+        }
+
+        setTimeout(poll, intervalMs);
+      } catch (error) {
+        reject(error);
+      }
+    };
+
+    poll();
+  });
+}
+
 async function getTranscript(transcriptId) {
-  const pollingUrl = `${ASSEMBLYAI_BASE}/transcript/${transcriptId}`;
-
-  while (true) {
-    const response = await axios.get(pollingUrl, { headers: getHeaders() });
-    const { status, text, error } = response.data;
-
-    if (status === 'completed') {
-      return text;
-    }
-
-    if (status === 'error') {
-      throw new Error(`Transcription failed: ${error}`);
-    }
-
-    // Poll every 3 seconds
-    await new Promise((resolve) => setTimeout(resolve, 3000));
-  }
+  return pollTranscript(transcriptId);
 }
 
 module.exports = {

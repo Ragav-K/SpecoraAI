@@ -1,6 +1,7 @@
 const express = require('express');
 const multer = require('multer');
 const meetingController = require('../controllers/meetingController');
+const auth = require('../middleware/authMiddleware');
 
 const router = express.Router();
 
@@ -26,11 +27,12 @@ const upload = multer({
   },
 });
 
-// Routes
-router.post('/', meetingController.createMeeting);
-router.get('/', meetingController.getMeetings);
-router.get('/:id', meetingController.getMeetingById);
-router.post('/:id/upload', upload.single('audio'), meetingController.uploadAudio);
-router.delete('/:id', meetingController.deleteMeeting);
+// Routes (JWT protected)
+router.post('/', auth, meetingController.createMeeting);
+router.get('/', auth, meetingController.getMeetings);
+router.get('/:id/audio', auth, meetingController.streamAudio);
+router.get('/:id', auth, meetingController.getMeetingById);
+router.post('/:id/upload', auth, upload.single('audio'), meetingController.uploadAudio);
+router.delete('/:id', auth, meetingController.deleteMeeting);
 
 module.exports = router;

@@ -1,9 +1,23 @@
 const User = require('../models/User');
 const { sendOTPEmail, sendPasswordResetEmail } = require('../services/emailService');
 const bcrypt = require('bcryptjs');
+const jwt = require('jsonwebtoken');
 
 // Helper to generate 6-digit OTP
 const generateOTP = () => Math.floor(100000 + Math.random() * 900000).toString();
+const JWT_SECRET = process.env.JWT_SECRET || 'specora-dev-secret';
+
+const signToken = (user) =>
+  jwt.sign({ id: user._id, email: user.email, name: user.name }, JWT_SECRET, { expiresIn: '12h' });
+
+const formatUser = (user) => ({ id: user._id, email: user.email, name: user.name });
+
+const hashValue = async (value) => bcrypt.hash(value, 10);
+
+const verifyHashedValue = async (plain, hash) => {
+  if (!plain || !hash) return false;
+  return bcrypt.compare(plain, hash);
+};
 
 // ── Signup ────────────────────────────────────────────────────────┐
 exports.signup = async (req, res) => {
@@ -30,6 +44,7 @@ exports.signup = async (req, res) => {
 
     // Generate new OTP
     const otp = generateOTP();
+    const hashedOtp = await hashValue(otp);
     // Expiry: 10 minutes from now
     const otpExpiry = new Date();
     otpExpiry.setMinutes(otpExpiry.getMinutes() + 10);
@@ -38,11 +53,11 @@ exports.signup = async (req, res) => {
       // Update unverified user with new details and OTP
       user.name = name;
       user.password = hashedPassword;
-      user.otp = otp;
+      user.otp = hashedOtp;
       user.otpExpiry = otpExpiry;
     } else {
       // Create new unverified user
-      user = new User({ email, name, password: hashedPassword, otp, otpExpiry });
+      user = new User({ email, name, password: hashedPassword, otp: hashedOtp, otpExpiry });
     }
 
     await user.save();
@@ -53,7 +68,7 @@ exports.signup = async (req, res) => {
     res.status(200).json({ message: 'OTP sent successfully to ' + email });
   } catch (error) {
     console.error('Signup error:', error);
-    res.status(500).json({ error: 'Server error during signup' });
+    res.status(500).json({ error: 'Internal server error' });
   }
 };
 
@@ -76,7 +91,7 @@ exports.verifyOtp = async (req, res) => {
       return res.status(400).json({ error: 'User is already verified. Please log in.' });
     }
 
-    if (user.otp !== otp) {
+    if (!user.otp || !(await verifyHashedValue(otp, user.otp))) {
       return res.status(400).json({ error: 'Invalid OTP' });
     }
 
@@ -90,12 +105,12 @@ exports.verifyOtp = async (req, res) => {
     user.otpExpiry = null;
     await user.save();
 
-    // Return user data (could also return a JWT token here)
-    const userData = { id: user._id, email: user.email, name: user.name };
-    res.status(200).json({ message: 'Email verified successfully', user: userData });
+    const token = signToken(user);
+    const userData = formatUser(user);
+    res.status(200).json({ message: 'Email verified successfully', user: userData, token });
   } catch (error) {
     console.error('Verify OTP error:', error);
-    res.status(500).json({ error: 'Server error during OTP verification' });
+    res.status(500).json({ error: 'Internal server error' });
   }
 };
 
@@ -125,12 +140,12 @@ exports.login = async (req, res) => {
       return res.status(400).json({ error: 'Invalid credentials. Password is incorrect.' });
     }
 
-    // Login successful
-    const userData = { id: user._id, email: user.email, name: user.name };
-    res.status(200).json({ message: 'Login successful', user: userData });
+    const userData = formatUser(user);
+    const token = signToken(user);
+    res.status(200).json({ message: 'Login successful', user: userData, token });
   } catch (error) {
     console.error('Login error:', error);
-    res.status(500).json({ error: 'Server error during login' });
+    res.status(500).json({ error: 'Internal server error' });
   }
 };
 
@@ -150,10 +165,11 @@ exports.requestPasswordReset = async (req, res) => {
     }
 
     const otp = generateOTP();
+    const hashedOtp = await hashValue(otp);
     const otpExpiry = new Date();
     otpExpiry.setMinutes(otpExpiry.getMinutes() + 10);
 
-    user.resetOtp = otp;
+    user.resetOtp = hashedOtp;
     user.resetOtpExpiry = otpExpiry;
     await user.save();
 
@@ -162,7 +178,7 @@ exports.requestPasswordReset = async (req, res) => {
     res.status(200).json({ message: 'Password reset code sent to ' + email });
   } catch (error) {
     console.error('Password reset request error:', error);
-    res.status(500).json({ error: 'Server error while sending reset code' });
+    res.status(500).json({ error: 'Internal server error' });
   }
 };
 
@@ -185,7 +201,7 @@ exports.resetPassword = async (req, res) => {
       return res.status(404).json({ error: 'No verified account found with this email' });
     }
 
-    if (!user.resetOtp || user.resetOtp !== otp) {
+    if (!user.resetOtp || !(await verifyHashedValue(otp, user.resetOtp))) {
       return res.status(400).json({ error: 'Invalid OTP' });
     }
 
@@ -204,6 +220,6 @@ exports.resetPassword = async (req, res) => {
     res.status(200).json({ message: 'Password reset successful' });
   } catch (error) {
     console.error('Password reset error:', error);
-    res.status(500).json({ error: 'Server error during password reset' });
+    res.status(500).json({ error: 'Internal server error' });
   }
 };

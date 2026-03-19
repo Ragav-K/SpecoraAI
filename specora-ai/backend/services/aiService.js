@@ -1,6 +1,7 @@
 const OpenAI = require('openai');
 
 let openaiClient = null;
+const isMock = process.env.MOCK_AI === 'true';
 
 /**
  * Get or create the OpenAI client (lazy initialization)
@@ -19,6 +20,21 @@ function getClient() {
  * @returns {object} Parsed documentation object
  */
 async function analyzeTranscript(transcript, projectName) {
+  if (isMock) {
+    return {
+      srs: 'Mock summary of the meeting transcript.',
+      requirements: ['Mock requirement A', 'Mock requirement B'],
+      userStories: ['As a tester, I want to run mock mode so that I avoid billing.'],
+      apiEndpoints: [{ method: 'GET', path: '/mock', description: 'Mock endpoint' }],
+      dbTables: [{ table: 'mock_table', columns: ['id', 'value'] }],
+      architecture: 'Mock architecture recommendation.',
+      summary: 'Mock summary',
+      keyPoints: ['Point A', 'Point B'],
+      actionItems: ['Follow up'],
+      decisions: ['Approved'],
+    };
+  }
+
   const client = getClient();
 
   const prompt = `You are a senior software requirements analyst. Analyze this meeting transcript for the project "${projectName}" and extract structured documentation.

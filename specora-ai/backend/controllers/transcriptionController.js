@@ -12,7 +12,7 @@ async function transcribeMeeting(req, res) {
       return res.status(404).json({ error: 'Meeting not found' });
     }
 
-    if (!meeting.audioUrl) {
+    if (!meeting.audioPath) {
       return res.status(400).json({ error: 'No audio file attached to this meeting' });
     }
 
@@ -21,7 +21,7 @@ async function transcribeMeeting(req, res) {
     await meeting.save();
 
     // Step 1: Upload audio to AssemblyAI
-    const uploadedUrl = await assemblyService.uploadAudio(meeting.audioUrl);
+    const uploadedUrl = await assemblyService.uploadAudio(meeting.audioPath);
 
     // Step 2: Start transcription
     const transcriptId = await assemblyService.startTranscription(uploadedUrl);
@@ -31,16 +31,19 @@ async function transcribeMeeting(req, res) {
 
     // Save transcript
     meeting.transcript = transcript;
-    meeting.status = 'transcribing';
+    meeting.status = 'transcribed';
     await meeting.save();
+
+    const responseMeeting = meeting.toObject();
+    responseMeeting.audioUrl = meeting.audioPath ? `/api/meetings/${meeting._id}/audio` : '';
 
     res.json({
       message: 'Transcription completed',
       transcript,
-      meeting,
+      meeting: responseMeeting,
     });
   } catch (error) {
-    console.error('Transcription error:', error.message);
+    console.error('Transcription error:', error);
 
     // Update meeting status to error
     try {
@@ -49,7 +52,7 @@ async function transcribeMeeting(req, res) {
       /* ignore */
     }
 
-    res.status(500).json({ error: `Transcription failed: ${error.message}` });
+    res.status(500).json({ error: 'Internal server error' });
   }
 }
 

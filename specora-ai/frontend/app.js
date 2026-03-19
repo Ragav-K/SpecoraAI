@@ -13,7 +13,19 @@ const App = (() => {
     meetings: [],
     docs: { srs: null, stories: null, api: null, db: null, arch: null },
     user: null, // Stores logged in user
+    audioObjectUrl: null,
   };
+
+  function getSession() {
+    const raw = localStorage.getItem('specora_session');
+    if (!raw) return null;
+    try {
+      return JSON.parse(raw);
+    } catch (error) {
+      localStorage.removeItem('specora_session');
+      return null;
+    }
+  }
 
   // ── Navigation ──
   function nav(page) {
@@ -166,13 +178,27 @@ const App = (() => {
       const audioDownload = document.getElementById('detail-audio-download');
       const noAudio = document.getElementById('detail-no-audio');
       
+      if (state.audioObjectUrl) {
+        URL.revokeObjectURL(state.audioObjectUrl);
+        state.audioObjectUrl = null;
+      }
+
       if (meeting.audioUrl) {
-        // audioUrl is usually like "uploads/..."
-        const audioSrc = '/' + meeting.audioUrl.replace(/\\/g, '/');
-        audioPlayer.src = audioSrc;
-        audioDownload.href = audioSrc;
-        audioContainer.style.display = 'block';
-        noAudio.style.display = 'none';
+        try {
+          const audioBlob = await API.getMeetingAudio(state.currentMeetingId);
+          const audioSrc = URL.createObjectURL(audioBlob);
+          state.audioObjectUrl = audioSrc;
+          audioPlayer.src = audioSrc;
+          audioDownload.href = audioSrc;
+          audioDownload.download = `${meeting.title || 'specora-audio'}.webm`;
+          audioContainer.style.display = 'block';
+          noAudio.style.display = 'none';
+        } catch (err) {
+          console.error('Audio playback error:', err);
+          audioContainer.style.display = 'none';
+          noAudio.style.display = 'block';
+          showNotif('Unable to load meeting audio', '!');
+        }
       } else {
         audioContainer.style.display = 'none';
         noAudio.style.display = 'block';
@@ -181,7 +207,8 @@ const App = (() => {
       // Transcript
       const transcriptEl = document.getElementById('detail-transcript');
       if (meeting.transcript) {
-        transcriptEl.innerHTML = `<p>${meeting.transcript}</p>`;
+        // SECURITY: render transcript as plain text to avoid stored XSS
+        transcriptEl.textContent = meeting.transcript;
       } else {
         transcriptEl.innerHTML = '<p class="text3">No transcript available yet.</p>';
       }
@@ -292,10 +319,13 @@ const App = (() => {
         </div>`;
 
       const audioFile = state.uploadedFile || Recorder.getRecordedBlob();
-      if (audioFile) {
-        const file = audioFile instanceof Blob ? new File([audioFile], 'recording.webm', { type: 'audio/webm' }) : audioFile;
-        await API.uploadAudio(meeting._id, file);
+      if (!audioFile) {
+        // UX: guard against empty submissions to avoid backend failures
+        alert('Please record or upload audio before processing.');
+        throw new Error('No audio selected');
       }
+      const file = audioFile instanceof Blob ? new File([audioFile], 'recording.webm', { type: 'audio/webm' }) : audioFile;
+      await API.uploadAudio(meeting._id, file);
       await markStepDone('sp1', 'step-upload', 'Audio uploaded');
 
       // Step 3: Transcribe
@@ -595,13 +625,22 @@ const App = (() => {
     if (!confirmDelete) return;
 
     try {
-      await API.deleteMeeting(state.currentMeetingId);
+      const deletedId = state.currentMeetingId;
+      await API.deleteMeeting(deletedId);
       showNotif('Meeting deleted successfully', '✓');
-      
+
+      // State: drop deleted meeting first, then clear the current selection
+      state.meetings = state.meetings.filter(m => m._id !== deletedId);
       state.currentMeetingId = null;
-      state.meetings = state.meetings.filter(m => m._id !== state.currentMeetingId);
-      
-      // Navigate back to dashboard and refresh
+
+      // UI: refresh sidebar + reset detail view before navigating away
+      renderSidebarMeetings();
+      if (state.audioObjectUrl) {
+        URL.revokeObjectURL(state.audioObjectUrl);
+        state.audioObjectUrl = null;
+      }
+      setDefaultDocs();
+      renderReqs();
       nav('dashboard');
     } catch (e) {
       showNotif('Failed to delete meeting: ' + e.message, '!');
@@ -620,18 +659,18 @@ const App = (() => {
   // ── Init ──
   function init() {
     // 1. Auth Gate
-    const storedUser = localStorage.getItem('specora_user');
-    if (!storedUser) {
+    const session = getSession();
+    if (!session || !session.token || !session.user) {
       window.location.href = 'auth.html';
       return;
     }
     
     try {
-      state.user = JSON.parse(storedUser);
+      state.user = session.user;
       updateSidebarUserInfo();
     } catch (e) {
       // Invalid session data
-      localStorage.removeItem('specora_user');
+      localStorage.removeItem('specora_session');
       window.location.href = 'auth.html';
       return;
     }
@@ -649,7 +688,11 @@ const App = (() => {
 
   // ── Auth Utilities ──
   function logout() {
-    localStorage.removeItem('specora_user');
+    if (state.audioObjectUrl) {
+      URL.revokeObjectURL(state.audioObjectUrl);
+      state.audioObjectUrl = null;
+    }
+    localStorage.removeItem('specora_session');
     window.location.href = 'auth.html';
   }
 

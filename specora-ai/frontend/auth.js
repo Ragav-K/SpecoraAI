@@ -7,10 +7,25 @@ const Auth = (() => {
   let forgotStep = 'email'; // 'email' | 'reset'
   let forgotEmail = '';
 
+  function getStoredSession() {
+    const raw = localStorage.getItem('specora_session');
+    if (!raw) return null;
+    try {
+      return JSON.parse(raw);
+    } catch (error) {
+      localStorage.removeItem('specora_session');
+      return null;
+    }
+  }
+
+  function persistSession(user, token) {
+    localStorage.setItem('specora_session', JSON.stringify({ user, token }));
+  }
+
   // ── Initialization ──
   function init() {
     // If already logged in, redirect to app
-    if (localStorage.getItem('specora_user')) {
+    if (getStoredSession()) {
       window.location.href = 'index.html';
       return;
     }
@@ -135,8 +150,7 @@ const Auth = (() => {
         showNotif(`Verification code sent to ${email}`, '✉');
       } else {
         const data = await login(email, password);
-        // Login success - no OTP
-        localStorage.setItem('specora_user', JSON.stringify(data.user));
+        persistSession(data.user, data.token);
         showNotif('Login successful! Redirecting...', '✓');
         setTimeout(() => {
           window.location.href = 'index.html';
@@ -262,7 +276,7 @@ const Auth = (() => {
       }
 
       // Success — save session and redirect
-      localStorage.setItem('specora_user', JSON.stringify(data.user));
+      persistSession(data.user, data.token);
       showNotif('Verified! Redirecting...', '✓');
       
       setTimeout(() => {

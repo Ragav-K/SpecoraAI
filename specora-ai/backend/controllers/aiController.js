@@ -39,7 +39,7 @@ async function analyzeMeeting(req, res) {
       meeting,
     });
   } catch (error) {
-    console.error('Analysis error:', error.message);
+    console.error('Analysis error:', error);
 
     try {
       await Meeting.findByIdAndUpdate(req.params.meetingId, { status: 'error' });
@@ -47,7 +47,7 @@ async function analyzeMeeting(req, res) {
       /* ignore */
     }
 
-    res.status(500).json({ error: `Analysis failed: ${error.message}` });
+    res.status(500).json({ error: 'Internal server error' });
   }
 }
 

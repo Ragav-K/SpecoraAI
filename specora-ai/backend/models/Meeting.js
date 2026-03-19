@@ -10,6 +10,10 @@ const meetingSchema = new mongoose.Schema({
     type: String,
     default: '',
   },
+  audioPath: {
+    type: String,
+    default: '',
+  },
   transcript: {
     type: String,
     default: '',
