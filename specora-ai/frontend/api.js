@@ -5,7 +5,7 @@
 const API = (() => {
   // Environment-aware base URLs (local first, then production)
   const LOCAL_BASES = ['http://localhost:5000/api', 'http://localhost:5001/api'];
-  const PROD_BASE = 'https://specoraai.web.app/api';
+  const PROD_BASE = 'https://specoraai.onrender.com/api';
 
   function getApiBases() {
     const host = window.location.hostname;
