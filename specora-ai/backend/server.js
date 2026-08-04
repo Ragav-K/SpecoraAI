@@ -8,6 +8,7 @@ const fs = require('fs');
 const rateLimit = require('express-rate-limit');
 const connectDB = require('./config/db');
 const aiService = require('./services/aiService');
+const emailService = require('./services/emailService');
 
 // Fail fast if JWT_SECRET is missing in production (see config/jwt.js)
 require('./config/jwt');
@@ -108,8 +109,9 @@ app.get('/api/health', (req, res) => {
     services: {
       assemblyai: !!process.env.ASSEMBLYAI_API_KEY,
       mongodb: !!process.env.MONGODB_URI,
-      // Which AI provider is active, and whether its key is present.
+      // Which providers are active, and whether their keys are present.
       ai: aiService.describeProvider(),
+      email: emailService.describeProvider(),
     },
   });
 });
