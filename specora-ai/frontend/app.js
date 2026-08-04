@@ -17,6 +17,14 @@ const App = (() => {
   };
 
   /**
+   * Reference an icon from the sprite in index.html. Icon names are authored
+   * here, never user-supplied, so this is safe to interpolate into innerHTML.
+   */
+  function svgIcon(name, cls) {
+    return `<svg class="ic${cls ? ' ' + cls : ''}" aria-hidden="true"><use href="#i-${name}"></use></svg>`;
+  }
+
+  /**
    * SECURITY: escape any user- or model-supplied text before it reaches
    * innerHTML. Meeting titles and every AI-generated field (SRS, stories, API
    * paths, table/column names, architecture) are attacker-influenceable —
@@ -112,7 +120,7 @@ const App = (() => {
     if (meetings.length === 0) {
       el.innerHTML = `
         <div class="card center" style="padding:40px">
-          <div style="font-size:32px;margin-bottom:12px">📭</div>
+          <div class="empty-mark">${svgIcon('inbox')}</div>
           <h3 class="mb8">No meetings yet</h3>
           <p class="text2 text-sm mb16">Create your first meeting to get started</p>
           <button class="btn btn-primary" onclick="App.nav('new-meeting')">+ New Meeting</button>
@@ -129,9 +137,9 @@ const App = (() => {
           <span class="badge ${statusColors[m.status] || 'badge-amber'}">${esc(m.status)}</span>
         </div>
         <div class="fl-row gap8 text-sm text2">
-          <span>📅 ${esc(new Date(m.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }))}</span>
+          <span class="meta-line">${svgIcon('calendar')} ${esc(new Date(m.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }))}</span>
           <span>·</span>
-          <span>${m.transcript ? '📝 Transcribed' : '⏳ Pending'}</span>
+          <span class="meta-line">${m.transcript ? svgIcon('check') + ' Transcribed' : svgIcon('clock') + ' Pending'}</span>
         </div>
         <p class="text-sm text2">${m.transcript ? esc(m.transcript.substring(0, 120)) + '...' : 'No transcript yet'}</p>
       </div>`
@@ -156,7 +164,7 @@ const App = (() => {
       <button class="nav-item ${state.currentMeetingId === m._id ? 'active' : ''}" 
               style="padding:6px 12px;font-size:12.5px;gap:8px;" 
               onclick="App.viewMeeting('${escAttr(m._id)}')">
-        <span style="font-size:12px;">📄</span>
+        ${svgIcon('file')}
         <span style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${esc(m.title)}</span>
       </button>
     `).join('');
@@ -218,7 +226,7 @@ const App = (() => {
           console.error('Audio playback error:', err);
           audioContainer.style.display = 'none';
           noAudio.style.display = 'block';
-          showNotif('Unable to load meeting audio', '!');
+          showNotif('Unable to load meeting audio', 'alert');
         }
       } else {
         audioContainer.style.display = 'none';
@@ -299,7 +307,7 @@ const App = (() => {
     document.getElementById('upload-filename').textContent = file.name;
     document.getElementById('upload-size').textContent = (file.size / 1024 / 1024).toFixed(2) + ' MB';
     document.getElementById('upload-preview').style.display = 'block';
-    showNotif(`File "${file.name}" ready for processing`, '✓');
+    showNotif(`File "${file.name}" ready for processing`, 'check');
   }
 
   // ── Process audio (main flow) ──
@@ -411,8 +419,8 @@ const App = (() => {
         console.error('Analysis failed:', e);
       }
 
-      stepsEl.innerHTML += `<div class="badge badge-green mt8" style="font-size:13px;padding:8px 16px;">✓ Processing complete!</div>`;
-      showNotif('Meeting processed! View documentation →', '✓');
+      stepsEl.innerHTML += `<div class="badge badge-green mt8" style="font-size:13px;padding:8px 16px;">${svgIcon('check')} Processing complete!</div>`;
+      showNotif('Meeting processed — open Documentation to view it', 'check');
       
       // Refresh meetings list to show new meeting in sidebar/dashboard
       try {
@@ -420,8 +428,8 @@ const App = (() => {
         renderSidebarMeetings();
       } catch (e) {}
     } catch (error) {
-      stepsEl.innerHTML += `<div class="badge badge-red mt8" style="font-size:13px;padding:8px 16px;">✗ Error: ${esc(error.message)}</div>`;
-      showNotif('Processing failed: ' + error.message, '!');
+      stepsEl.innerHTML += `<div class="badge badge-red mt8" style="font-size:13px;padding:8px 16px;">${svgIcon('alert')} Error: ${esc(error.message)}</div>`;
+      showNotif('Processing failed: ' + error.message, 'alert');
     }
 
     processBtn.disabled = false;
@@ -431,7 +439,7 @@ const App = (() => {
     return new Promise((resolve) => {
       setTimeout(() => {
         const sp = document.getElementById(spinnerId);
-        if (sp) sp.outerHTML = `<span style="color:var(--teal);font-size:15px;">✓</span>`;
+        if (sp) sp.outerHTML = `<span style="color:var(--teal);display:inline-flex;">${svgIcon('check')}</span>`;
         const step = document.getElementById(stepId);
         if (step) {
           const info = step.querySelector('.text-sm');
@@ -603,13 +611,13 @@ const App = (() => {
   }
 
   function saveEditor() {
-    showNotif('Draft saved!', '✓');
+    showNotif('Draft saved!', 'check');
   }
 
   async function aiAssist() {
     const instruction = document.getElementById('ai-assist-input').value;
     if (!instruction.trim()) {
-      showNotif('Enter an instruction for AI assist', '!');
+      showNotif('Enter an instruction for AI assist', 'alert');
       return;
     }
 
@@ -619,8 +627,8 @@ const App = (() => {
 
     // AI assist works client-side for now (could be routed through backend later)
     setTimeout(() => {
-      document.getElementById('rich-editor').innerHTML += `<hr style="border:none;border-top:1px solid var(--border);margin:12px 0;"><p style="color:var(--teal);">💡 AI suggestion: ${esc(instruction)}</p>`;
-      showNotif('AI improvement added!', '✓');
+      document.getElementById('rich-editor').innerHTML += `<hr style="border:none;border-top:1px solid var(--border);margin:12px 0;"><p style="color:var(--teal);">${svgIcon('spark')} AI suggestion: ${esc(instruction)}</p>`;
+      showNotif('AI improvement added!', 'check');
       spinner.style.display = 'none';
       document.getElementById('ai-assist-input').value = '';
     }, 1500);
@@ -640,7 +648,7 @@ const App = (() => {
 
       downloadFile('specora-requirements.md', md, 'text/markdown');
     } else if (format === 'pdf' || format === 'docx') {
-      showNotif(`${format.toUpperCase()} export requires backend. Connect API keys to enable.`, '⬇');
+      showNotif(`${format.toUpperCase()} export requires backend. Connect API keys to enable.`, 'download');
     }
   }
 
@@ -649,7 +657,7 @@ const App = (() => {
     a.href = URL.createObjectURL(new Blob([content], { type }));
     a.download = filename;
     a.click();
-    showNotif(`${filename} downloaded!`, '✓');
+    showNotif(`${filename} downloaded!`, 'check');
   }
 
   // ── Default docs (empty) ──
@@ -673,7 +681,7 @@ const App = (() => {
     try {
       const deletedId = state.currentMeetingId;
       await API.deleteMeeting(deletedId);
-      showNotif('Meeting deleted successfully', '✓');
+      showNotif('Meeting deleted successfully', 'check');
 
       // State: drop deleted meeting first, then clear the current selection
       state.meetings = state.meetings.filter(m => m._id !== deletedId);
@@ -689,15 +697,15 @@ const App = (() => {
       renderReqs();
       nav('dashboard');
     } catch (e) {
-      showNotif('Failed to delete meeting: ' + e.message, '!');
+      showNotif('Failed to delete meeting: ' + e.message, 'alert');
     }
   }
 
   // ── Notifications ──
-  function showNotif(msg, icon = '✓') {
+  function showNotif(msg, icon = 'check') {
     const el = document.getElementById('notif');
     document.getElementById('notif-msg').textContent = msg;
-    document.getElementById('notif-icon').textContent = icon;
+    document.getElementById('notif-icon').innerHTML = svgIcon(icon);
     el.classList.add('show');
     setTimeout(() => el.classList.remove('show'), 3000);
   }

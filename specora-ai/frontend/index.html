@@ -9,8 +9,108 @@
 </head>
 <body>
 
+    <!-- Icon sprite. Stroke-based, 24px grid, inherits currentColor.
+         Kept inline so <use> resolves without waiting on script. -->
+    <svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false">
+      <defs>
+        <g id="ic-defaults"></g>
+      </defs>
+      <symbol id="i-logo" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M2 12h3l2.5-6.5L11 18l2.5-9L16 12h6"/>
+      </symbol>
+      <symbol id="i-home" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M3 10.6 12 3.5l9 7.1"/><path d="M5.6 9.4V20h12.8V9.4"/><path d="M10 20v-5h4v5"/>
+      </symbol>
+      <symbol id="i-grid" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
+        <rect x="3.5" y="3.5" width="7" height="7" rx="1.6"/><rect x="13.5" y="3.5" width="7" height="7" rx="1.6"/>
+        <rect x="3.5" y="13.5" width="7" height="7" rx="1.6"/><rect x="13.5" y="13.5" width="7" height="7" rx="1.6"/>
+      </symbol>
+      <symbol id="i-plus" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M12 5v14M5 12h14"/>
+      </symbol>
+      <symbol id="i-clock" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="12" cy="12" r="8.5"/><path d="M12 7.2V12l3.2 1.9"/>
+      </symbol>
+      <symbol id="i-file" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M14 3.5H7a1.5 1.5 0 0 0-1.5 1.5v14A1.5 1.5 0 0 0 7 20.5h10a1.5 1.5 0 0 0 1.5-1.5V8z"/>
+        <path d="M14 3.5V8h4.5"/><path d="M9 13h6M9 16.5h4"/>
+      </symbol>
+      <symbol id="i-pencil" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M4 20h4L19 9a2.5 2.5 0 0 0-3.5-3.5L4 16.5z"/><path d="M14.5 6.5 17.5 9.5"/>
+      </symbol>
+      <symbol id="i-download" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M12 3.5v11"/><path d="m8 10.8 4 3.9 4-3.9"/><path d="M4.5 16.5v2A2 2 0 0 0 6.5 20.5h11a2 2 0 0 0 2-2v-2"/>
+      </symbol>
+      <symbol id="i-upload" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M12 15V4"/><path d="m8 7.7 4-3.9 4 3.9"/><path d="M4.5 16.5v2A2 2 0 0 0 6.5 20.5h11a2 2 0 0 0 2-2v-2"/>
+      </symbol>
+      <symbol id="i-logout" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M14.5 4.5h3A2 2 0 0 1 19.5 6.5v11a2 2 0 0 1-2 2h-3"/><path d="M10 16.5 5.5 12 10 7.5"/><path d="M5.5 12H15"/>
+      </symbol>
+      <symbol id="i-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="m6.5 9.5 5.5 5.5 5.5-5.5"/>
+      </symbol>
+      <symbol id="i-mic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
+        <rect x="9" y="2.8" width="6" height="11" rx="3"/><path d="M5.5 11.5a6.5 6.5 0 0 0 13 0"/><path d="M12 18v3.2"/>
+      </symbol>
+      <symbol id="i-play" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M8 5.5v13l11-6.5z"/>
+      </symbol>
+      <symbol id="i-pause" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M9.5 5v14M14.5 5v14"/>
+      </symbol>
+      <symbol id="i-stop" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
+        <rect x="6" y="6" width="12" height="12" rx="2"/>
+      </symbol>
+      <symbol id="i-trash" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M4.5 6.5h15"/><path d="M9.5 6.5V4.8a1.3 1.3 0 0 1 1.3-1.3h2.4a1.3 1.3 0 0 1 1.3 1.3V6.5"/>
+        <path d="M6.5 6.5 7.4 19a1.6 1.6 0 0 0 1.6 1.5h6a1.6 1.6 0 0 0 1.6-1.5l.9-12.5"/><path d="M10.5 10v6.5M13.5 10v6.5"/>
+      </symbol>
+      <symbol id="i-spark" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M12 3.5c0 4 1.6 5.6 5.6 5.6-4 0-5.6 1.6-5.6 5.6 0-4-1.6-5.6-5.6-5.6 4 0 5.6-1.6 5.6-5.6z"/>
+        <path d="M18 15.5c0 2 .8 2.8 2.8 2.8-2 0-2.8.8-2.8 2.8 0-2-.8-2.8-2.8-2.8 2 0 2.8-.8 2.8-2.8z"/>
+      </symbol>
+      <symbol id="i-check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round">
+        <path d="m5 12.5 4.5 4.5L19 7"/>
+      </symbol>
+      <symbol id="i-alert" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.85" stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="12" cy="12" r="8.5"/><path d="M12 7.8v5"/><path d="M12 16.2h.01"/>
+      </symbol>
+      <symbol id="i-calendar" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
+        <rect x="3.5" y="5" width="17" height="15.5" rx="2"/><path d="M3.5 9.5h17"/><path d="M8 3v4M16 3v4"/>
+      </symbol>
+      <symbol id="i-inbox" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M3.5 13.5h4l1.5 3h6l1.5-3h4"/><path d="M6 4.5h12l2.5 9v5a2 2 0 0 1-2 2h-13a2 2 0 0 1-2-2v-5z"/>
+      </symbol>
+      <symbol id="i-arrow-right" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M4.5 12h14"/><path d="m13 6.5 5.5 5.5-5.5 5.5"/>
+      </symbol>
+      <symbol id="i-mail" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
+        <rect x="3" y="5" width="18" height="14" rx="2"/><path d="m3.6 6.5 8.4 6 8.4-6"/>
+      </symbol>
+      <symbol id="i-user" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="12" cy="8.5" r="3.8"/><path d="M4.8 20.2a7.4 7.4 0 0 1 14.4 0"/>
+      </symbol>
+      <symbol id="i-database" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
+        <ellipse cx="12" cy="6" rx="7.5" ry="3"/><path d="M4.5 6v12c0 1.7 3.4 3 7.5 3s7.5-1.3 7.5-3V6"/><path d="M4.5 12c0 1.7 3.4 3 7.5 3s7.5-1.3 7.5-3"/>
+      </symbol>
+      <symbol id="i-layers" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
+        <path d="m12 3 9 4.8-9 4.8-9-4.8z"/><path d="m3 12.5 9 4.8 9-4.8"/>
+      </symbol>
+      <symbol id="i-list" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M9 6.5h11M9 12h11M9 17.5h11"/><path d="M4.5 6.5h.01M4.5 12h.01M4.5 17.5h.01"/>
+      </symbol>
+      <symbol id="i-code" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
+        <path d="m8.5 8-4.5 4 4.5 4"/><path d="m15.5 8 4.5 4-4.5 4"/>
+      </symbol>
+      <symbol id="i-back" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M19.5 12h-14"/><path d="m11 6.5-5.5 5.5 5.5 5.5"/>
+      </symbol>
+    </svg>
+
+
 <div id="notif" class="notif">
-  <span id="notif-icon">✓</span>
+  <span id="notif-icon"><svg class="ic" aria-hidden="true"><use href="#i-check"></use></svg></span>
   <span id="notif-msg">Done</span>
 </div>
 
@@ -18,21 +118,21 @@
   <!-- ─── SIDEBAR ─── -->
   <div class="sidebar" id="sidebar">
     <div class="sidebar-logo">
-      <div class="logo-icon">◈</div>
+      <div class="logo-icon"><svg class="ic" aria-hidden="true"><use href="#i-logo"></use></svg></div>
       <div class="logo-text">Specora<span>AI</span></div>
     </div>
     <nav class="sidebar-nav">
-      <button class="nav-item" onclick="App.nav('landing')"><span class="nav-icon">◈</span><span>Home</span></button>
-      <button class="nav-item" onclick="App.nav('dashboard')"><span class="nav-icon">⊞</span><span>Dashboard</span></button>
-      <button class="nav-item" onclick="App.nav('new-meeting')"><span class="nav-icon">+</span><span>New Meeting</span></button>
-      <button class="nav-item" onclick="App.nav('meeting-detail')"><span class="nav-icon">◷</span><span>Meeting Detail</span></button>
-      <button class="nav-item" onclick="App.nav('docs')"><span class="nav-icon">≡</span><span>Documentation</span></button>
-      <button class="nav-item" onclick="App.nav('editor')"><span class="nav-icon">✎</span><span>Editor</span></button>
-      <button class="nav-item" onclick="App.nav('export')"><span class="nav-icon">↓</span><span>Export</span></button>
+      <button class="nav-item" onclick="App.nav('landing')"><span class="nav-icon"><svg class="ic" aria-hidden="true"><use href="#i-home"></use></svg></span><span>Home</span></button>
+      <button class="nav-item" onclick="App.nav('dashboard')"><span class="nav-icon"><svg class="ic" aria-hidden="true"><use href="#i-grid"></use></svg></span><span>Dashboard</span></button>
+      <button class="nav-item" onclick="App.nav('new-meeting')"><span class="nav-icon"><svg class="ic" aria-hidden="true"><use href="#i-plus"></use></svg></span><span>New Meeting</span></button>
+      <button class="nav-item" onclick="App.nav('meeting-detail')"><span class="nav-icon"><svg class="ic" aria-hidden="true"><use href="#i-clock"></use></svg></span><span>Meeting Detail</span></button>
+      <button class="nav-item" onclick="App.nav('docs')"><span class="nav-icon"><svg class="ic" aria-hidden="true"><use href="#i-file"></use></svg></span><span>Documentation</span></button>
+      <button class="nav-item" onclick="App.nav('editor')"><span class="nav-icon"><svg class="ic" aria-hidden="true"><use href="#i-pencil"></use></svg></span><span>Editor</span></button>
+      <button class="nav-item" onclick="App.nav('export')"><span class="nav-icon"><svg class="ic" aria-hidden="true"><use href="#i-download"></use></svg></span><span>Export</span></button>
       
       <button class="nav-item" onclick="App.toggleSidebarMeetings()" style="margin-top:16px; padding:6px 12px; justify-content:space-between; width:100%; border:none; background:none; cursor:pointer;" title="Toggle Recent Meetings">
         <div style="font-size:11px;text-transform:uppercase;letter-spacing:0.5px;color:var(--text3);font-weight:600;">Recent Meetings</div>
-        <span id="sidebar-meetings-chevron" style="font-size:10px; color:var(--text3); transition: transform 0.2s;">▼</span>
+        <span id="sidebar-meetings-chevron" style="font-size:10px; color:var(--text3); transition: transform 0.2s;display:inline-flex;"><svg class="ic" aria-hidden="true"><use href="#i-chevron"></use></svg></span>
       </button>
       <div id="sidebar-meetings" style="margin-top:4px;display:flex;flex-direction:column;gap:2px;max-height:200px;overflow-y:auto; transition: max-height 0.3s ease-out;">
         <!-- Dynamic meeting list -->
@@ -40,13 +140,13 @@
     </nav>
     <div class="sidebar-footer">
       <div style="display:flex;align-items:center;padding:8px 8px 12px;margin-bottom:8px;border-bottom:1px solid var(--border);">
-        <div style="width:28px;height:28px;border-radius:50%;background:var(--accent-glow);color:var(--accent2);display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:500;margin-right:10px;">👤</div>
+        <div style="width:28px;height:28px;border-radius:50%;background:var(--accent-glow);color:var(--accent2);display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:500;margin-right:10px;"><svg class="ic" aria-hidden="true"><use href="#i-user"></use></svg></div>
         <div style="flex:1;overflow:hidden;">
           <div id="sidebar-user-name" style="font-size:13px;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">User</div>
         </div>
       </div>
       <button class="nav-item" style="color:var(--red);font-size:12px;" onclick="App.logout()">
-        <span class="nav-icon">⎋</span><span>Logout</span>
+        <span class="nav-icon"><svg class="ic" aria-hidden="true"><use href="#i-logout"></use></svg></span><span>Logout</span>
       </button>
     </div>
   </div>
@@ -57,43 +157,43 @@
     <!-- ═══ LANDING ═══ -->
     <div class="page active" id="page-landing">
       <div class="hero">
-        <div class="hero-tag">⚡ AI-Powered Meeting Assistant</div>
+        <div class="hero-tag"><svg class="ic" aria-hidden="true"><use href="#i-spark"></use></svg> AI-Powered Meeting Assistant</div>
         <h1>Turn meetings into<br><span>structured specs</span></h1>
         <p>Record or upload meeting audio. Specora AI transcribes, extracts requirements, and generates complete software documentation automatically.</p>
         <div class="hero-btns">
-          <button class="btn btn-primary btn-lg" onclick="App.nav('new-meeting')">Start Recording →</button>
+          <button class="btn btn-primary btn-lg" onclick="App.nav('new-meeting')">Start Recording <svg class="ic" aria-hidden="true"><use href="#i-arrow-right"></use></svg></button>
           <button class="btn btn-ghost btn-lg" onclick="App.nav('dashboard')">View Dashboard</button>
         </div>
       </div>
 
       <div class="features-grid">
         <div class="feature-card">
-          <div class="feature-icon" style="background:var(--accent-glow);">🎙</div>
+          <div class="feature-icon" style="background:var(--accent-glow);color:var(--accent);"><svg class="ic" aria-hidden="true"><use href="#i-mic"></use></svg></div>
           <h3>Live Recording</h3>
           <p>Record meetings directly from your browser with real-time waveform visualization.</p>
         </div>
         <div class="feature-card">
-          <div class="feature-icon" style="background:var(--teal-dim);">📝</div>
+          <div class="feature-icon" style="background:var(--teal-dim);color:var(--teal);"><svg class="ic" aria-hidden="true"><use href="#i-list"></use></svg></div>
           <h3>AI Transcription</h3>
           <p>AssemblyAI converts speech to accurate text with speaker context.</p>
         </div>
         <div class="feature-card">
-          <div class="feature-icon" style="background:var(--amber-dim);">🤖</div>
+          <div class="feature-icon" style="background:var(--amber-dim);color:var(--amber);"><svg class="ic" aria-hidden="true"><use href="#i-spark"></use></svg></div>
           <h3>Requirement Extraction</h3>
           <p>AI analyzes transcripts and extracts structured functional requirements.</p>
         </div>
         <div class="feature-card">
-          <div class="feature-icon" style="background:var(--green-dim);">📄</div>
+          <div class="feature-icon" style="background:var(--green-dim);color:var(--green);"><svg class="ic" aria-hidden="true"><use href="#i-file"></use></svg></div>
           <h3>SRS Generation</h3>
           <p>Full Software Requirement Specification, user stories, and API suggestions.</p>
         </div>
         <div class="feature-card">
-          <div class="feature-icon" style="background:var(--red-dim);">✎</div>
+          <div class="feature-icon" style="background:var(--red-dim);color:var(--red);"><svg class="ic" aria-hidden="true"><use href="#i-pencil"></use></svg></div>
           <h3>Rich Text Editor</h3>
           <p>Edit AI-generated documentation with a full-featured rich text editor.</p>
         </div>
         <div class="feature-card">
-          <div class="feature-icon" style="background:var(--teal-dim);">↓</div>
+          <div class="feature-icon" style="background:var(--teal-dim);color:var(--teal);"><svg class="ic" aria-hidden="true"><use href="#i-download"></use></svg></div>
           <h3>Export Anywhere</h3>
           <p>Download as PDF, DOCX, or Markdown. Share with your team instantly.</p>
         </div>
@@ -158,8 +258,8 @@
       <div class="rec-container">
         <!-- Tab: Record vs Upload -->
         <div class="tab-bar" id="input-tabs">
-          <button class="tab-btn active" onclick="App.switchInputTab('record',this)">🎙 Live Record</button>
-          <button class="tab-btn" onclick="App.switchInputTab('upload',this)">⬆ Upload Audio</button>
+          <button class="tab-btn active" onclick="App.switchInputTab('record',this)"><svg class="ic" aria-hidden="true"><use href="#i-mic"></use></svg> Live Record</button>
+          <button class="tab-btn" onclick="App.switchInputTab('upload',this)"><svg class="ic" aria-hidden="true"><use href="#i-upload"></use></svg> Upload Audio</button>
         </div>
 
         <!-- RECORD TAB -->
@@ -178,16 +278,16 @@
             <canvas id="waveform-canvas"></canvas>
 
             <div class="fl-row mt16" style="justify-content:center; gap:12px;">
-              <button class="btn btn-success" id="btn-start" onclick="Recorder.startRecording()">▶ Start</button>
-              <button class="btn btn-ghost" id="btn-pause" onclick="Recorder.pauseRecording()" disabled>⏸ Pause</button>
-              <button class="btn btn-danger" id="btn-stop" onclick="Recorder.stopRecording()" disabled>⏹ Stop</button>
+              <button class="btn btn-success" id="btn-start" onclick="Recorder.startRecording()"><svg class="ic" aria-hidden="true"><use href="#i-play"></use></svg> Start</button>
+              <button class="btn btn-ghost" id="btn-pause" onclick="Recorder.pauseRecording()" disabled><svg class="ic" aria-hidden="true"><use href="#i-pause"></use></svg> Pause</button>
+              <button class="btn btn-danger" id="btn-stop" onclick="Recorder.stopRecording()" disabled><svg class="ic" aria-hidden="true"><use href="#i-stop"></use></svg> Stop</button>
             </div>
           </div>
 
           <div class="card" id="rec-preview" style="display:none;">
             <h3 class="mb8">Recording saved</h3>
             <div class="audio-player mt8" id="audio-player-rec">
-              <button class="play-btn" onclick="App.togglePlay('rec-audio')">▶</button>
+              <button class="play-btn" onclick="App.togglePlay('rec-audio')" aria-label="Play recording"><svg class="ic" aria-hidden="true"><use href="#i-play"></use></svg></button>
               <div style="flex:1;">
                 <div class="progress-bar"><div class="progress-fill" id="rec-progress" style="width:0%"></div></div>
                 <div class="fl-row sb mt8">
@@ -207,7 +307,7 @@
                ondragover="event.preventDefault();this.classList.add('drag-over')"
                ondragleave="this.classList.remove('drag-over')"
                ondrop="App.handleDrop(event)">
-            <div style="font-size:32px;margin-bottom:12px;">⬆</div>
+            <div class="drop-mark"><svg class="ic" aria-hidden="true"><use href="#i-upload"></use></svg></div>
             <h3 class="mb8">Drop audio file here or click to browse</h3>
             <p class="text2 text-sm">Supports MP3, WAV, M4A, WebM — up to 200MB</p>
             <input type="file" id="file-input" accept=".mp3,.wav,.m4a,.webm,audio/*" style="display:none;" onchange="App.handleFileSelect(event)">
@@ -231,7 +331,7 @@
 
         <!-- AI Processing -->
         <div class="mt16">
-          <button class="btn btn-primary full-w" id="process-btn" onclick="App.processAudio()">🤖 Process with AI</button>
+          <button class="btn btn-primary full-w" id="process-btn" onclick="App.processAudio()"><svg class="ic" aria-hidden="true"><use href="#i-spark"></use></svg> Process with AI</button>
         </div>
 
         <!-- Processing status -->
@@ -255,7 +355,7 @@
         <div class="fl-row gap8">
           <button class="btn btn-ghost btn-sm" onclick="App.nav('docs')">View Docs</button>
           <button class="btn btn-primary btn-sm" onclick="App.nav('export')">Export</button>
-          <button class="btn btn-danger btn-sm" onclick="App.deleteMeeting()" title="Delete Meeting">🗑</button>
+          <button class="btn btn-danger btn-sm" onclick="App.deleteMeeting()" title="Delete Meeting" aria-label="Delete meeting"><svg class="ic" aria-hidden="true"><use href="#i-trash"></use></svg></button>
         </div>
       </div>
 
@@ -265,7 +365,7 @@
         <div id="detail-audio-container" style="display:none; padding-top: 8px;">
           <audio id="detail-audio-player" controls style="width: 100%; outline: none; border-radius: 8px;"></audio>
           <div class="mt8">
-            <a id="detail-audio-download" href="#" download class="btn btn-ghost btn-sm">↓ Download Audio</a>
+            <a id="detail-audio-download" href="#" download class="btn btn-ghost btn-sm"><svg class="ic" aria-hidden="true"><use href="#i-download"></use></svg> Download Audio</a>
           </div>
         </div>
         <p id="detail-no-audio" class="text3 text-sm">No audio available for this meeting.</p>
@@ -308,8 +408,8 @@
           <p>AI-generated software requirement specification</p>
         </div>
         <div class="fl-row gap8">
-          <button class="btn btn-ghost btn-sm" onclick="App.nav('editor')">✎ Edit</button>
-          <button class="btn btn-primary btn-sm" onclick="App.nav('export')">↓ Export</button>
+          <button class="btn btn-ghost btn-sm" onclick="App.nav('editor')"><svg class="ic" aria-hidden="true"><use href="#i-pencil"></use></svg> Edit</button>
+          <button class="btn btn-primary btn-sm" onclick="App.nav('export')"><svg class="ic" aria-hidden="true"><use href="#i-download"></use></svg> Export</button>
         </div>
       </div>
 
@@ -337,7 +437,7 @@
         </div>
         <div class="fl-row gap8">
           <button class="btn btn-ghost btn-sm" onclick="App.saveEditor()">Save Draft</button>
-          <button class="btn btn-primary btn-sm" onclick="App.nav('export')">Export →</button>
+          <button class="btn btn-primary btn-sm" onclick="App.nav('export')">Export <svg class="ic" aria-hidden="true"><use href="#i-arrow-right"></use></svg></button>
         </div>
       </div>
 
@@ -345,15 +445,15 @@
         <div>
           <h3 class="mb12">Document Selector</h3>
           <div class="fl-col gap8 mb16">
-            <button class="btn btn-ghost full-w" style="justify-content:flex-start;text-align:left;" onclick="App.loadEditorDoc('srs')">📄 Software Requirements Spec</button>
-            <button class="btn btn-ghost full-w" style="justify-content:flex-start;text-align:left;" onclick="App.loadEditorDoc('stories')">👤 User Stories</button>
-            <button class="btn btn-ghost full-w" style="justify-content:flex-start;text-align:left;" onclick="App.loadEditorDoc('api')">⚡ API Endpoints</button>
-            <button class="btn btn-ghost full-w" style="justify-content:flex-start;text-align:left;" onclick="App.loadEditorDoc('db')">🗄 Database Schema</button>
-            <button class="btn btn-ghost full-w" style="justify-content:flex-start;text-align:left;" onclick="App.loadEditorDoc('arch')">🏗 Architecture Notes</button>
+            <button class="btn btn-ghost full-w" style="justify-content:flex-start;text-align:left;" onclick="App.loadEditorDoc('srs')"><svg class="ic" aria-hidden="true"><use href="#i-file"></use></svg> Software Requirements Spec</button>
+            <button class="btn btn-ghost full-w" style="justify-content:flex-start;text-align:left;" onclick="App.loadEditorDoc('stories')"><svg class="ic" aria-hidden="true"><use href="#i-user"></use></svg> User Stories</button>
+            <button class="btn btn-ghost full-w" style="justify-content:flex-start;text-align:left;" onclick="App.loadEditorDoc('api')"><svg class="ic" aria-hidden="true"><use href="#i-code"></use></svg> API Endpoints</button>
+            <button class="btn btn-ghost full-w" style="justify-content:flex-start;text-align:left;" onclick="App.loadEditorDoc('db')"><svg class="ic" aria-hidden="true"><use href="#i-database"></use></svg> Database Schema</button>
+            <button class="btn btn-ghost full-w" style="justify-content:flex-start;text-align:left;" onclick="App.loadEditorDoc('arch')"><svg class="ic" aria-hidden="true"><use href="#i-layers"></use></svg> Architecture Notes</button>
           </div>
 
           <div class="card card-sm">
-            <h3 class="mb8">✨ AI Assist</h3>
+            <h3 class="mb8 fl-row" style="gap:7px;"><svg class="ic" aria-hidden="true"><use href="#i-spark"></use></svg> AI Assist</h3>
             <p class="text-sm text2 mb12">Ask AI to improve or expand a section</p>
             <textarea id="ai-assist-input" placeholder="e.g. Add more detail to the authentication section..." style="min-height:70px;" class="mb8"></textarea>
             <button class="btn btn-primary btn-sm full-w" onclick="App.aiAssist()">
@@ -388,19 +488,19 @@
 
       <div class="grid-3 gap16 mb24">
         <div class="card" style="text-align:center; cursor:pointer;" onclick="App.exportAs('pdf')">
-          <div style="font-size:40px;margin-bottom:12px;">📕</div>
+          <div class="export-mark"><svg class="ic" aria-hidden="true"><use href="#i-file"></use></svg></div>
           <h3 class="mb4">PDF</h3>
           <p class="text-sm text2 mb12">Formatted document, ideal for sharing with clients</p>
           <button class="btn btn-primary btn-sm">Download PDF</button>
         </div>
         <div class="card" style="text-align:center; cursor:pointer;" onclick="App.exportAs('docx')">
-          <div style="font-size:40px;margin-bottom:12px;">📘</div>
+          <div class="export-mark"><svg class="ic" aria-hidden="true"><use href="#i-file"></use></svg></div>
           <h3 class="mb4">DOCX</h3>
           <p class="text-sm text2 mb12">Editable Word document for further customization</p>
           <button class="btn btn-ghost btn-sm">Download DOCX</button>
         </div>
         <div class="card" style="text-align:center; cursor:pointer;" onclick="App.exportAs('md')">
-          <div style="font-size:40px;margin-bottom:12px;">📝</div>
+          <div class="export-mark"><svg class="ic" aria-hidden="true"><use href="#i-code"></use></svg></div>
           <h3 class="mb4">Markdown</h3>
           <p class="text-sm text2 mb12">Plain text for GitHub, Notion, or any docs platform</p>
           <button class="btn btn-teal btn-sm">Download .md</button>

@@ -7,6 +7,11 @@ const Auth = (() => {
   let forgotStep = 'email'; // 'email' | 'reset'
   let forgotEmail = '';
 
+  /** Reference an icon from the sprite in auth.html. Names are authored, never user input. */
+  function svgIcon(name) {
+    return `<svg class="ic" aria-hidden="true"><use href="#i-${name}"></use></svg>`;
+  }
+
   function getStoredSession() {
     const raw = localStorage.getItem('specora_session');
     if (!raw) return null;
@@ -35,7 +40,7 @@ const Auth = (() => {
 
     // Explain the bounce when api.js redirected here on an expired/invalid token.
     if (new URLSearchParams(window.location.search).get('expired')) {
-      showNotif('Your session expired. Please log in again.', '!');
+      showNotif('Your session expired. Please log in again.', 'alert');
     }
   }
 
@@ -134,7 +139,7 @@ const Auth = (() => {
     currentEmail = email;
 
     if (mode === 'signup' && password !== confirmPassword) {
-      showNotif('Passwords do not match', '!');
+      showNotif('Passwords do not match', 'alert');
       return;
     }
 
@@ -152,17 +157,17 @@ const Auth = (() => {
         document.getElementById('view-verify').style.display = 'block';
         document.getElementById('verify-email-display').textContent = email;
         setTimeout(() => document.querySelector('#view-verify .otp-input')?.focus(), 100);
-        showNotif(`Verification code sent to ${email}`, '✉');
+        showNotif(`Verification code sent to ${email}`, 'mail');
       } else {
         const data = await login(email, password);
         persistSession(data.user, data.token);
-        showNotif('Login successful! Redirecting...', '✓');
+        showNotif('Login successful! Redirecting...', 'check');
         setTimeout(() => {
           window.location.href = 'index.html';
         }, 1000);
       }
     } catch (error) {
-      showNotif(error.message, '!');
+      showNotif(error.message, 'alert');
     } finally {
       const resetText = mode === 'signup' ? 'Create Account' : 'Sign In';
       setLoading(submitBtn, btnText, spinner, false, resetText);
@@ -182,7 +187,7 @@ const Auth = (() => {
     const confirmPasswordInput = document.getElementById('forgot-confirm-password-input');
 
     if (!email) {
-      showNotif('Please enter your email', '!');
+      showNotif('Please enter your email', 'alert');
       return;
     }
 
@@ -200,11 +205,11 @@ const Auth = (() => {
         confirmPasswordInput.required = true;
         otpInputs.forEach((input) => (input.value = ''));
         emailInput.readOnly = true;
-        showNotif(`Reset code sent to ${email}`, '✉');
+        showNotif(`Reset code sent to ${email}`, 'mail');
         setTimeout(() => document.querySelector('#forgot-otp-section .otp-input')?.focus(), 100);
       } else {
         if (email !== forgotEmail) {
-          showNotif('Email changed. Please request a new code.', '!');
+          showNotif('Email changed. Please request a new code.', 'alert');
           resetForgotView();
           return;
         }
@@ -213,7 +218,7 @@ const Auth = (() => {
         otpInputs.forEach((input) => (otp += input.value));
 
         if (otp.length !== 6) {
-          showNotif('Please enter all 6 digits', '!');
+          showNotif('Please enter all 6 digits', 'alert');
           return;
         }
 
@@ -221,17 +226,17 @@ const Auth = (() => {
         const confirmPassword = confirmPasswordInput.value;
 
         if (newPassword !== confirmPassword) {
-          showNotif('Passwords do not match', '!');
+          showNotif('Passwords do not match', 'alert');
           return;
         }
 
         if (newPassword.length < 6) {
-          showNotif('Password must be at least 6 characters', '!');
+          showNotif('Password must be at least 6 characters', 'alert');
           return;
         }
 
         await API.resetPassword(email, otp, newPassword);
-        showNotif('Password updated. Please sign in.', '✓');
+        showNotif('Password updated. Please sign in.', 'check');
         exitForgotPassword();
         document.getElementById('email-input').value = email;
         document.getElementById('password-input').value = '';
@@ -240,7 +245,7 @@ const Auth = (() => {
         document.getElementById('password-input').focus();
       }
     } catch (error) {
-      showNotif(error.message, '!');
+      showNotif(error.message, 'alert');
       if (forgotStep === 'reset') {
         otpInputs.forEach((input) => (input.value = ''));
         document.querySelector('#forgot-otp-section .otp-input')?.focus();
@@ -260,7 +265,7 @@ const Auth = (() => {
     inputs.forEach(input => otp += input.value);
 
     if (otp.length !== 6) {
-      showNotif('Please enter all 6 digits', '!');
+      showNotif('Please enter all 6 digits', 'alert');
       return;
     }
 
@@ -282,14 +287,14 @@ const Auth = (() => {
 
       // Success — save session and redirect
       persistSession(data.user, data.token);
-      showNotif('Verified! Redirecting...', '✓');
+      showNotif('Verified! Redirecting...', 'check');
       
       setTimeout(() => {
         window.location.href = 'index.html';
       }, 1000);
 
     } catch (error) {
-      showNotif(error.message, '!');
+      showNotif(error.message, 'alert');
       // Clear inputs on error so user can try again
       inputs.forEach(input => input.value = '');
       inputs[0].focus();
@@ -309,7 +314,7 @@ const Auth = (() => {
         const password = document.getElementById('password-input').value;
         await signup(currentEmail, name, password);
       }
-      showNotif('New verification code sent', '✓');
+      showNotif('New verification code sent', 'check');
       
       let countdown = 60;
       const interval = setInterval(() => {
@@ -323,7 +328,7 @@ const Auth = (() => {
       }, 1000);
       
     } catch (error) {
-      showNotif(error.message, '!');
+      showNotif(error.message, 'alert');
       resendBtn.disabled = false;
       resendBtn.textContent = 'Resend';
     }
@@ -392,10 +397,10 @@ const Auth = (() => {
     }
   }
 
-  function showNotif(msg, icon = '✓') {
+  function showNotif(msg, icon = 'check') {
     const el = document.getElementById('notif');
     document.getElementById('notif-msg').textContent = msg;
-    document.getElementById('notif-icon').textContent = icon;
+    document.getElementById('notif-icon').innerHTML = svgIcon(icon);
     el.classList.add('show');
     setTimeout(() => el.classList.remove('show'), 3000);
   }

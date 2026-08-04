@@ -59,6 +59,52 @@ body {
   -webkit-font-smoothing: antialiased;
 }
 
+/* ── Icons ──
+   Stroke icons from the sprite. They inherit colour from the element they sit
+   in, so a button, badge or nav item styles its icon for free. */
+.ic {
+  width: 1.05em;
+  height: 1.05em;
+  flex-shrink: 0;
+  vertical-align: -0.16em;
+}
+
+/* Icons inside flex rows shouldn't inherit the row's baseline quirks */
+.btn .ic, .nav-item .ic, .badge .ic, .tab-btn .ic { vertical-align: 0; }
+
+.nav-icon { display: inline-flex; align-items: center; justify-content: center; }
+.nav-icon .ic { width: 17px; height: 17px; }
+
+.logo-icon .ic { width: 17px; height: 17px; }
+
+.feature-icon .ic { width: 19px; height: 19px; }
+
+/* Oversized marks: upload dropzone, empty states, export cards */
+.drop-mark, .empty-mark, .export-mark {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0 auto 12px;
+  border-radius: 50%;
+  color: var(--accent);
+  background: var(--accent-glow);
+}
+.drop-mark { width: 46px; height: 46px; }
+.drop-mark .ic { width: 21px; height: 21px; }
+.empty-mark { width: 44px; height: 44px; color: var(--text3); background: var(--bg3); }
+.empty-mark .ic { width: 20px; height: 20px; }
+.export-mark { width: 52px; height: 52px; }
+.export-mark .ic { width: 24px; height: 24px; }
+
+/* Inline metadata rows (date, transcribed/pending) */
+.meta-line { display: inline-flex; align-items: center; gap: 5px; }
+.meta-line .ic { width: 13px; height: 13px; opacity: 0.85; }
+
+#notif-icon { display: inline-flex; align-items: center; }
+#notif-icon .ic { width: 16px; height: 16px; color: var(--accent); }
+
+.editor-toolbar .ic { width: 15px; height: 15px; }
+
 /* ── Layout ── */
 .app { display: flex; min-height: 100vh; }
 

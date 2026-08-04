@@ -189,7 +189,7 @@ const Recorder = (() => {
     const dur = document.getElementById('rec-time-dur');
     if (dur) dur.textContent = formatTime(recSeconds);
 
-    App.showNotif('Recording saved successfully!', '✓');
+    App.showNotif('Recording saved successfully!', 'check');
   }
 
   /**
@@ -250,7 +250,7 @@ const Recorder = (() => {
         badge.className = 'badge badge-red';
         btnStart.disabled = true;
         btnPause.disabled = false;
-        btnPause.textContent = '⏸ Pause';
+        setBtnLabel(btnPause, 'pause', 'Pause');
         btnStop.disabled = false;
         break;
       case 'paused':
@@ -258,7 +258,7 @@ const Recorder = (() => {
         statusText.textContent = 'Paused';
         badge.textContent = 'Paused';
         badge.className = 'badge badge-amber';
-        btnPause.textContent = '▶ Resume';
+        setBtnLabel(btnPause, 'play', 'Resume');
         break;
       case 'stopped':
         dot.className = 'rec-dot';
@@ -277,7 +277,7 @@ const Recorder = (() => {
         badge.className = 'badge badge-amber';
         btnStart.disabled = false;
         btnPause.disabled = true;
-        btnPause.textContent = '⏸ Pause';
+        setBtnLabel(btnPause, 'pause', 'Pause');
         btnStop.disabled = true;
         clearCanvas();
         break;
@@ -298,6 +298,12 @@ const Recorder = (() => {
   function token(name, fallback) {
     const v = getComputedStyle(document.documentElement).getPropertyValue(name).trim();
     return v || fallback;
+  }
+
+  /** Set a button's icon + label from the sprite. Icon names are authored, not user input. */
+  function setBtnLabel(btn, icon, label) {
+    if (!btn) return;
+    btn.innerHTML = `<svg class="ic" aria-hidden="true"><use href="#i-${icon}"></use></svg> ${label}`;
   }
 
   // ── Waveform (real) ──
