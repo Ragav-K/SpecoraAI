@@ -16,6 +16,27 @@ const App = (() => {
     audioObjectUrl: null,
   };
 
+  /**
+   * SECURITY: escape any user- or model-supplied text before it reaches
+   * innerHTML. Meeting titles and every AI-generated field (SRS, stories, API
+   * paths, table/column names, architecture) are attacker-influenceable —
+   * a transcript can carry markup straight through the model into the DOM.
+   */
+  function esc(value) {
+    if (value === null || value === undefined) return '';
+    return String(value)
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#39;');
+  }
+
+  // For text placed inside a single-quoted inline handler, e.g. onclick="f('…')"
+  function escAttr(value) {
+    return esc(value).replace(/\\/g, '&#92;');
+  }
+
   function getSession() {
     const raw = localStorage.getItem('specora_session');
     if (!raw) return null;
@@ -102,17 +123,17 @@ const App = (() => {
     el.innerHTML = meetings
       .map(
         (m) => `
-      <div class="meeting-card" onclick="App.viewMeeting('${m._id}')">
+      <div class="meeting-card" onclick="App.viewMeeting('${escAttr(m._id)}')">
         <div class="fl-row sb">
-          <h3>${m.title}</h3>
-          <span class="badge ${statusColors[m.status] || 'badge-amber'}">${m.status}</span>
+          <h3>${esc(m.title)}</h3>
+          <span class="badge ${statusColors[m.status] || 'badge-amber'}">${esc(m.status)}</span>
         </div>
         <div class="fl-row gap8 text-sm text2">
-          <span>📅 ${new Date(m.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</span>
+          <span>📅 ${esc(new Date(m.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }))}</span>
           <span>·</span>
           <span>${m.transcript ? '📝 Transcribed' : '⏳ Pending'}</span>
         </div>
-        <p class="text-sm text2">${m.transcript ? m.transcript.substring(0, 120) + '...' : 'No transcript yet'}</p>
+        <p class="text-sm text2">${m.transcript ? esc(m.transcript.substring(0, 120)) + '...' : 'No transcript yet'}</p>
       </div>`
       )
       .join('');
@@ -134,9 +155,9 @@ const App = (() => {
     el.innerHTML = state.meetings.slice(0, 10).map(m => `
       <button class="nav-item ${state.currentMeetingId === m._id ? 'active' : ''}" 
               style="padding:6px 12px;font-size:12.5px;gap:8px;" 
-              onclick="App.viewMeeting('${m._id}')">
+              onclick="App.viewMeeting('${escAttr(m._id)}')">
         <span style="font-size:12px;">📄</span>
-        <span style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${m.title}</span>
+        <span style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${esc(m.title)}</span>
       </button>
     `).join('');
   }
@@ -240,7 +261,7 @@ const App = (() => {
         (r, i) => `
       <div class="req-item">
         <div class="req-num">${i + 1}</div>
-        <div style="flex:1;font-size:13.5px;">${r}</div>
+        <div style="flex:1;font-size:13.5px;">${esc(r)}</div>
       </div>`
       )
       .join('');
@@ -324,7 +345,23 @@ const App = (() => {
         alert('Please record or upload audio before processing.');
         throw new Error('No audio selected');
       }
-      const file = audioFile instanceof Blob ? new File([audioFile], 'recording.webm', { type: 'audio/webm' }) : audioFile;
+      // Carry the recorder's real container through instead of always claiming
+      // webm — Safari records mp4, and the backend whitelists on mime type.
+      const file =
+        audioFile instanceof File
+          ? audioFile
+          : (() => {
+              const type = Recorder.getRecordedMimeType() || audioFile.type || 'audio/webm';
+              const base = type.split(';')[0];
+              const extMap = {
+                'audio/webm': 'webm',
+                'audio/mp4': 'm4a',
+                'audio/ogg': 'ogg',
+                'audio/mpeg': 'mp3',
+                'audio/wav': 'wav',
+              };
+              return new File([audioFile], `recording.${extMap[base] || 'webm'}`, { type: base });
+            })();
       await API.uploadAudio(meeting._id, file);
       await markStepDone('sp1', 'step-upload', 'Audio uploaded');
 
@@ -342,7 +379,10 @@ const App = (() => {
         await API.transcribe(meeting._id);
         await markStepDone('sp2', 'step-transcribe', 'Transcription complete');
       } catch (e) {
-        await markStepDone('sp2', 'step-transcribe', 'Transcription skipped (check API key)');
+        // Report the actual failure. The old blanket "check API key" text
+        // misattributed every error — including server-side ones — to config.
+        await markStepDone('sp2', 'step-transcribe', `Transcription failed: ${e.message}`);
+        console.error('Transcription failed:', e);
       }
 
       // Step 4: Analyze
@@ -350,7 +390,7 @@ const App = (() => {
         <div class="fl-row gap8" id="step-analyze">
           <span class="spinner" id="sp3"></span>
           <div>
-            <div style="font-size:13.5px;font-weight:500;">Analyzing with GPT-4</div>
+            <div style="font-size:13.5px;font-weight:500;">Analyzing transcript with AI</div>
             <div class="text-sm text2">Extracting requirements...</div>
           </div>
         </div>`;
@@ -367,7 +407,8 @@ const App = (() => {
         await markStepDone('sp3', 'step-analyze', 'Analysis complete');
       } catch (e) {
         setDefaultDocs();
-        await markStepDone('sp3', 'step-analyze', 'Analysis skipped (check API key)');
+        await markStepDone('sp3', 'step-analyze', `Analysis failed: ${e.message}`);
+        console.error('Analysis failed:', e);
       }
 
       stepsEl.innerHTML += `<div class="badge badge-green mt8" style="font-size:13px;padding:8px 16px;">✓ Processing complete!</div>`;
@@ -379,7 +420,7 @@ const App = (() => {
         renderSidebarMeetings();
       } catch (e) {}
     } catch (error) {
-      stepsEl.innerHTML += `<div class="badge badge-red mt8" style="font-size:13px;padding:8px 16px;">✗ Error: ${error.message}</div>`;
+      stepsEl.innerHTML += `<div class="badge badge-red mt8" style="font-size:13px;padding:8px 16px;">✗ Error: ${esc(error.message)}</div>`;
       showNotif('Processing failed: ' + error.message, '!');
     }
 
@@ -442,7 +483,7 @@ const App = (() => {
         <div class="doc-section-body">${(d.srs || '')
           .split('\n')
           .filter(Boolean)
-          .map((p) => `<p style="margin-bottom:12px;">${p}</p>`)
+          .map((p) => `<p style="margin-bottom:12px;">${esc(p)}</p>`)
           .join('')}</div>
       </div>`;
 
@@ -456,7 +497,7 @@ const App = (() => {
               (s, i) => `
             <div class="req-item">
               <div class="req-num">${i + 1}</div>
-              <div>${s}</div>
+              <div>${esc(s)}</div>
             </div>`
             )
             .join('')}
@@ -472,10 +513,10 @@ const App = (() => {
             .map(
               (ep) => `
             <div class="req-item">
-              <div class="req-num" style="font-family:var(--mono);font-size:10px;width:44px;border-radius:6px;">${ep.method}</div>
+              <div class="req-num" style="font-family:var(--mono);font-size:10px;width:44px;border-radius:6px;">${esc(ep.method)}</div>
               <div>
-                <div class="mono text-teal mb4">${ep.path}</div>
-                <div class="text-sm text2">${ep.description}</div>
+                <div class="mono text-teal mb4">${esc(ep.path)}</div>
+                <div class="text-sm text2">${esc(ep.description)}</div>
               </div>
             </div>`
             )
@@ -493,9 +534,9 @@ const App = (() => {
               .map(
                 (t) => `
               <div class="card card-sm" style="background:var(--bg3);">
-                <h3 class="mono text-accent mb8">${t.table}</h3>
+                <h3 class="mono text-accent mb8">${esc(t.table)}</h3>
                 ${(t.columns || [])
-                  .map((c) => `<div class="text-sm text2 mono" style="padding:3px 0;border-bottom:1px solid var(--border);">${c}</div>`)
+                  .map((c) => `<div class="text-sm text2 mono" style="padding:3px 0;border-bottom:1px solid var(--border);">${esc(c)}</div>`)
                   .join('')}
               </div>`
               )
@@ -511,7 +552,7 @@ const App = (() => {
         <div class="doc-section-body">${(d.arch || '')
           .split('\n')
           .filter(Boolean)
-          .map((p) => `<p style="margin-bottom:12px;">${p}</p>`)
+          .map((p) => `<p style="margin-bottom:12px;">${esc(p)}</p>`)
           .join('')}</div>
       </div>`;
   }
@@ -534,18 +575,23 @@ const App = (() => {
       content = (d.srs || '')
         .split('\n')
         .filter(Boolean)
-        .map((p) => `<p>${p}</p>`)
+        .map((p) => `<p>${esc(p)}</p>`)
         .join('');
-    if (type === 'stories') content = (d.stories || []).map((s, i) => `<p><strong>${i + 1}.</strong> ${s}</p>`).join('');
+    if (type === 'stories')
+      content = (d.stories || []).map((s, i) => `<p><strong>${i + 1}.</strong> ${esc(s)}</p>`).join('');
     if (type === 'api')
-      content = (d.api || []).map((ep) => `<p><strong>${ep.method}</strong> <code>${ep.path}</code> — ${ep.description}</p>`).join('');
+      content = (d.api || [])
+        .map((ep) => `<p><strong>${esc(ep.method)}</strong> <code>${esc(ep.path)}</code> — ${esc(ep.description)}</p>`)
+        .join('');
     if (type === 'db')
-      content = (d.db || []).map((t) => `<p><strong>${t.table}</strong>: ${(t.columns || []).join(', ')}</p>`).join('');
+      content = (d.db || [])
+        .map((t) => `<p><strong>${esc(t.table)}</strong>: ${esc((t.columns || []).join(', '))}</p>`)
+        .join('');
     if (type === 'arch')
       content = (d.arch || '')
         .split('\n')
         .filter(Boolean)
-        .map((p) => `<p>${p}</p>`)
+        .map((p) => `<p>${esc(p)}</p>`)
         .join('');
 
     document.getElementById('rich-editor').innerHTML = content || '<p>No content generated yet. Process a meeting first.</p>';
@@ -573,7 +619,7 @@ const App = (() => {
 
     // AI assist works client-side for now (could be routed through backend later)
     setTimeout(() => {
-      document.getElementById('rich-editor').innerHTML += `<hr style="border:none;border-top:1px solid var(--border);margin:12px 0;"><p style="color:var(--teal);">💡 AI suggestion: ${instruction}</p>`;
+      document.getElementById('rich-editor').innerHTML += `<hr style="border:none;border-top:1px solid var(--border);margin:12px 0;"><p style="color:var(--teal);">💡 AI suggestion: ${esc(instruction)}</p>`;
       showNotif('AI improvement added!', '✓');
       spinner.style.display = 'none';
       document.getElementById('ai-assist-input').value = '';

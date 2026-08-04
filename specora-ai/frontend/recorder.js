@@ -13,24 +13,99 @@ const Recorder = (() => {
   let recording = false;
   let paused = false;
   let recordedBlob = null;
+  let recordedMimeType = '';
+  let previewObjectUrl = null;
+
+  // Candidate container/codec combinations, best first. Chrome/Firefox pick
+  // webm; Safari only supports mp4 — recording there and then labelling the
+  // blob "audio/webm" produces a mislabelled upload.
+  const MIME_CANDIDATES = [
+    'audio/webm;codecs=opus',
+    'audio/webm',
+    'audio/mp4;codecs=mp4a.40.2',
+    'audio/mp4',
+    'audio/ogg;codecs=opus',
+  ];
+
+  function pickMimeType() {
+    if (typeof MediaRecorder === 'undefined' || !MediaRecorder.isTypeSupported) {
+      return '';
+    }
+    return MIME_CANDIDATES.find((t) => MediaRecorder.isTypeSupported(t)) || '';
+  }
+
+  /** Release the previous take's resources before starting a new one. */
+  function resetTake() {
+    // Without this, a failed second take silently re-submits the first one.
+    recordedBlob = null;
+    recordedMimeType = '';
+    audioChunks = [];
+
+    if (previewObjectUrl) {
+      URL.revokeObjectURL(previewObjectUrl);
+      previewObjectUrl = null;
+    }
+
+    const preview = document.getElementById('rec-preview');
+    if (preview) preview.style.display = 'none';
+
+    const audio = document.getElementById('rec-audio');
+    if (audio) audio.removeAttribute('src');
+  }
+
+  function releaseAudioContext() {
+    if (audioCtx) {
+      audioCtx.close().catch(() => {});
+      audioCtx = null;
+    }
+    analyser = null;
+  }
 
   /**
    * Start live audio recording via microphone
    */
   async function startRecording() {
+    resetTake();
+
+    let stream;
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    } catch (e) {
+      // No fake "demo mode": it animated a waveform and claimed a recording was
+      // ready while capturing nothing, so processing failed later with a
+      // misleading message. Tell the user the truth instead.
+      console.warn('Microphone access failed:', e.name, e.message);
+
+      const message =
+        e.name === 'NotAllowedError' || e.name === 'SecurityError'
+          ? 'Microphone access was denied. Enable it in your browser settings, or use the Upload tab instead.'
+          : e.name === 'NotFoundError'
+            ? 'No microphone was found. Connect one, or use the Upload tab instead.'
+            : `Could not start recording: ${e.message}. You can use the Upload tab instead.`;
+
+      App.showNotif(message, '!');
+      updateUI('idle');
+      return;
+    }
+
+    try {
       audioCtx = new (window.AudioContext || window.webkitAudioContext)();
       const source = audioCtx.createMediaStreamSource(stream);
       analyser = audioCtx.createAnalyser();
       analyser.fftSize = 256;
       source.connect(analyser);
 
-      mediaRecorder = new MediaRecorder(stream);
-      audioChunks = [];
-      mediaRecorder.ondataavailable = (e) => audioChunks.push(e.data);
+      const mimeType = pickMimeType();
+      mediaRecorder = mimeType ? new MediaRecorder(stream, { mimeType }) : new MediaRecorder(stream);
+      // Trust the recorder's own report over our request.
+      recordedMimeType = mediaRecorder.mimeType || mimeType || '';
+
+      mediaRecorder.ondataavailable = (e) => {
+        if (e.data && e.data.size > 0) audioChunks.push(e.data);
+      };
       mediaRecorder.onstop = onRecordingStop;
       mediaRecorder.start(100);
+
       recording = true;
       paused = false;
       recSeconds = 0;
@@ -39,22 +114,12 @@ const Recorder = (() => {
       startTimer();
       drawWaveform();
     } catch (e) {
-      console.warn('Microphone access denied, using demo mode.');
-      App.showNotif('Microphone access denied. Using demo mode.', '!');
-      startDemoRecording();
+      console.error('Failed to start recorder:', e);
+      stream.getTracks().forEach((t) => t.stop());
+      releaseAudioContext();
+      App.showNotif(`Could not start recording: ${e.message}`, '!');
+      updateUI('idle');
     }
-  }
-
-  /**
-   * Demo recording mode (no microphone)
-   */
-  function startDemoRecording() {
-    recording = true;
-    paused = false;
-    recSeconds = 0;
-    updateUI('recording');
-    startTimer();
-    drawDemoWaveform();
   }
 
   /**
@@ -100,18 +165,31 @@ const Recorder = (() => {
    * Called when recording finishes
    */
   function onRecordingStop() {
-    if (audioChunks.length > 0) {
-      recordedBlob = new Blob(audioChunks, { type: 'audio/webm' });
-      const url = URL.createObjectURL(recordedBlob);
-      const audio = document.getElementById('rec-audio');
-      if (audio) audio.src = url;
-      document.getElementById('rec-preview').style.display = 'block';
-      App.showNotif('Recording saved successfully!', '✓');
-    } else {
-      document.getElementById('rec-preview').style.display = 'block';
-      document.getElementById('rec-time-dur').textContent = formatTime(recSeconds);
-      App.showNotif('Demo recording ready for processing!', '✓');
+    releaseAudioContext();
+
+    if (audioChunks.length === 0) {
+      // Nothing was captured — say so rather than implying a usable recording.
+      App.showNotif('No audio was captured. Please try recording again.', '!');
+      updateUI('idle');
+      return;
     }
+
+    // Carry the real recorded type through instead of hardcoding webm.
+    const type = recordedMimeType || audioChunks[0].type || 'audio/webm';
+    recordedBlob = new Blob(audioChunks, { type });
+    recordedMimeType = type;
+
+    previewObjectUrl = URL.createObjectURL(recordedBlob);
+    const audio = document.getElementById('rec-audio');
+    if (audio) audio.src = previewObjectUrl;
+
+    const preview = document.getElementById('rec-preview');
+    if (preview) preview.style.display = 'block';
+
+    const dur = document.getElementById('rec-time-dur');
+    if (dur) dur.textContent = formatTime(recSeconds);
+
+    App.showNotif('Recording saved successfully!', '✓');
   }
 
   /**
@@ -119,6 +197,14 @@ const Recorder = (() => {
    */
   function getRecordedBlob() {
     return recordedBlob;
+  }
+
+  /**
+   * The actual MIME type of the last recording, so the upload can be named and
+   * labelled correctly (Safari records mp4, not webm).
+   */
+  function getRecordedMimeType() {
+    return recordedMimeType;
   }
 
   /**
@@ -183,15 +269,41 @@ const Recorder = (() => {
         btnPause.disabled = true;
         btnStop.disabled = true;
         break;
+      case 'idle':
+        // Recording never started, or captured nothing — reset the controls.
+        dot.className = 'rec-dot';
+        statusText.textContent = 'Ready to record';
+        badge.textContent = 'Idle';
+        badge.className = 'badge badge-amber';
+        btnStart.disabled = false;
+        btnPause.disabled = true;
+        btnPause.textContent = '⏸ Pause';
+        btnStop.disabled = true;
+        clearCanvas();
+        break;
     }
+  }
+
+  function clearCanvas() {
+    const canvas = document.getElementById('waveform-canvas');
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+  }
+
+  /**
+   * Read a CSS custom property so the canvas can never drift from the theme.
+   * Hardcoding colours here is what left the waveform dark-themed after a restyle.
+   */
+  function token(name, fallback) {
+    const v = getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+    return v || fallback;
   }
 
   // ── Waveform (real) ──
   function drawWaveform() {
-    if (!analyser) {
-      drawDemoWaveform();
-      return;
-    }
+    // Only ever driven by real microphone data — there is no synthetic fallback.
+    if (!analyser) return;
     const canvas = document.getElementById('waveform-canvas');
     const ctx = canvas.getContext('2d');
     const W = canvas.offsetWidth;
@@ -200,49 +312,27 @@ const Recorder = (() => {
     canvas.height = H;
     const buf = new Uint8Array(analyser.frequencyBinCount);
 
+    const trackColor = token('--bg3', '#F1F3F6');
+    const barColor = token('--accent', '#0E7C74');
+
     function render() {
       animFrame = requestAnimationFrame(render);
       analyser.getByteFrequencyData(buf);
       ctx.clearRect(0, 0, W, H);
-      ctx.fillStyle = '#181b22';
+      ctx.fillStyle = trackColor;
       ctx.fillRect(0, 0, W, H);
       const barW = (W / buf.length) * 2.5;
       let x = 0;
       for (let i = 0; i < buf.length; i++) {
         const barH = (buf[i] / 255) * H;
-        const alpha = 0.5 + buf[i] / 512;
-        ctx.fillStyle = `rgba(108,99,255,${alpha})`;
+        const alpha = 0.45 + buf[i] / 512;
+        ctx.fillStyle = barColor;
+        ctx.globalAlpha = Math.min(alpha, 1);
         ctx.fillRect(x, H - barH, barW - 1, barH);
         x += barW;
       }
-    }
-    render();
-  }
-
-  // ── Waveform (demo) ──
-  function drawDemoWaveform() {
-    const canvas = document.getElementById('waveform-canvas');
-    const ctx = canvas.getContext('2d');
-    const W = canvas.offsetWidth || 400;
-    const H = 60;
-    canvas.width = W;
-    canvas.height = H;
-    let t = 0;
-
-    function render() {
-      if (!recording && !paused) return;
-      animFrame = requestAnimationFrame(render);
-      ctx.clearRect(0, 0, W, H);
-      ctx.fillStyle = '#181b22';
-      ctx.fillRect(0, 0, W, H);
-      const bars = Math.floor(W / 4);
-      for (let i = 0; i < bars; i++) {
-        const barH = (Math.sin(t + i * 0.3) * 0.5 + 0.5) * H * (0.3 + Math.random() * 0.4);
-        const alpha = 0.4 + barH / H;
-        ctx.fillStyle = `rgba(108,99,255,${alpha})`;
-        ctx.fillRect(i * 4, H - barH, 3, barH);
-      }
-      t += 0.15;
+      // Reset, or the last bar's alpha bleeds into next frame's background fill.
+      ctx.globalAlpha = 1;
     }
     render();
   }
@@ -252,6 +342,7 @@ const Recorder = (() => {
     pauseRecording,
     stopRecording,
     getRecordedBlob,
+    getRecordedMimeType,
     isRecording,
   };
 })();

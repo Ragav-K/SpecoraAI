@@ -40,6 +40,31 @@ const API = (() => {
     return err;
   }
 
+  /**
+   * True when the current document is the login/signup page.
+   * The 401 handler must never fire here: auth.html also loads api.js, and a
+   * wrong password now legitimately returns 401. Redirecting would reload the
+   * page and swallow the inline error message.
+   */
+  function isAuthPage() {
+    return /(^|\/)auth\.html$/.test(window.location.pathname);
+  }
+
+  let sessionExpiryHandled = false;
+
+  /**
+   * A 401 on an app page means the stored token is expired, forged, or signed
+   * with a different secret. Clear it and send the user to login — otherwise
+   * every request fails and the dashboard renders empty, which looks exactly
+   * like the user's data having been deleted.
+   */
+  function handleSessionExpired() {
+    if (isAuthPage() || sessionExpiryHandled) return;
+    sessionExpiryHandled = true;
+    localStorage.removeItem('specora_session');
+    window.location.href = 'auth.html?expired=1';
+  }
+
   function getSessionToken() {
     const raw = localStorage.getItem('specora_session');
     if (!raw) return null;
@@ -94,6 +119,10 @@ const API = (() => {
     }
 
     if (!res.ok) {
+      if (res.status === 401) {
+        handleSessionExpired();
+      }
+
       const err = new Error(data?.error || data?.message || `Request failed (${res.status})`);
       err.status = res.status;
       err.retryable = false;
@@ -137,6 +166,7 @@ const API = (() => {
       try {
         const res = await fetch(`${base}/meetings/${meetingId}/audio`, { headers });
         if (!res.ok) {
+          if (res.status === 401) handleSessionExpired();
           throw new Error(`Audio fetch failed (${res.status})`);
         }
         return await res.blob();

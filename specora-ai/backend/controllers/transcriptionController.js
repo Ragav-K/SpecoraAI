@@ -2,11 +2,15 @@ const Meeting = require('../models/Meeting');
 const assemblyService = require('../services/assemblyService');
 
 /**
- * POST /api/transcribe/:meetingId — Transcribe audio for a meeting
+ * POST /api/transcribe/:meetingId — Transcribe audio for the caller's meeting
  */
 async function transcribeMeeting(req, res) {
   try {
-    const meeting = await Meeting.findById(req.params.meetingId);
+    // SECURITY: scoped by owner — another user's meeting is simply "not found".
+    const meeting = await Meeting.findOne({
+      _id: req.params.meetingId,
+      user: req.user.id,
+    });
 
     if (!meeting) {
       return res.status(404).json({ error: 'Meeting not found' });
@@ -43,11 +47,18 @@ async function transcribeMeeting(req, res) {
       meeting: responseMeeting,
     });
   } catch (error) {
+    if (error.name === 'CastError') {
+      return res.status(404).json({ error: 'Meeting not found' });
+    }
+
     console.error('Transcription error:', error);
 
-    // Update meeting status to error
+    // Update meeting status to error (still owner-scoped)
     try {
-      await Meeting.findByIdAndUpdate(req.params.meetingId, { status: 'error' });
+      await Meeting.findOneAndUpdate(
+        { _id: req.params.meetingId, user: req.user.id },
+        { status: 'error' }
+      );
     } catch (e) {
       /* ignore */
     }

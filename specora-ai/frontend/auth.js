@@ -32,6 +32,11 @@ const Auth = (() => {
 
     setupOtpInputs();
     switchTab('login');
+
+    // Explain the bounce when api.js redirected here on an expired/invalid token.
+    if (new URLSearchParams(window.location.search).get('expired')) {
+      showNotif('Your session expired. Please log in again.', '!');
+    }
   }
 
   // ── UI State ──

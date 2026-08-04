@@ -1,6 +1,14 @@
 const mongoose = require('mongoose');
 
 const meetingSchema = new mongoose.Schema({
+  // SECURITY: every meeting is owned by exactly one user. All queries must be
+  // scoped by this field so users cannot reach each other's meetings.
+  user: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User',
+    required: [true, 'Meeting owner is required'],
+    index: true,
+  },
   title: {
     type: String,
     required: [true, 'Meeting title is required'],
@@ -55,7 +63,15 @@ const meetingSchema = new mongoose.Schema({
   },
   status: {
     type: String,
-    enum: ['created', 'uploading', 'transcribing', 'analyzing', 'completed', 'error'],
+    enum: [
+      'created',
+      'uploading',
+      'transcribing',
+      'transcribed',
+      'analyzing',
+      'completed',
+      'error',
+    ],
     default: 'created',
   },
   createdAt: {

@@ -2,10 +2,15 @@ require('dotenv').config({ path: __dirname + '/.env' });
 
 const express = require('express');
 const cors = require('cors');
+const helmet = require('helmet');
 const path = require('path');
 const fs = require('fs');
 const rateLimit = require('express-rate-limit');
 const connectDB = require('./config/db');
+const aiService = require('./services/aiService');
+
+// Fail fast if JWT_SECRET is missing in production (see config/jwt.js)
+require('./config/jwt');
 
 // Route imports
 const meetingRoutes = require('./routes/meetingRoutes');
@@ -16,7 +21,22 @@ const authRoutes = require('./routes/authRoutes');
 const app = express();
 const PORT = process.env.PORT || 5000;
 
+// Behind a reverse proxy (Render), the client IP is in X-Forwarded-For.
+// Without this, express-rate-limit keys every request to the proxy IP and one
+// user hitting the limit locks out everybody.
+app.set('trust proxy', 1);
+
 // ── Middleware ──────────────────────────────────────────────────
+// Security headers. CSP is disabled because the frontend relies on inline
+// onclick handlers and inline styles; CORP is cross-origin because the
+// frontend is served from Firebase Hosting while the API runs elsewhere.
+app.use(
+  helmet({
+    contentSecurityPolicy: false,
+    crossOriginResourcePolicy: { policy: 'cross-origin' },
+  })
+);
+
 const allowedOrigins = [
   'http://localhost:5500',
   'http://localhost:3000',
@@ -49,6 +69,18 @@ const apiLimiter = rateLimit({
   legacyHeaders: false,
   message: { error: 'Too many requests. Please try again later.' },
 });
+
+// Tighter limit on auth: the global 100/15min is far too loose to slow down
+// brute-forcing a 6-digit OTP.
+const authLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 10,
+  standardHeaders: true,
+  legacyHeaders: false,
+  skipSuccessfulRequests: true,
+  message: { error: 'Too many authentication attempts. Please try again in 15 minutes.' },
+});
+
 app.use('/api', apiLimiter);
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ extended: true, limit: '50mb' }));
@@ -63,7 +95,7 @@ if (!fs.existsSync(uploadsDir)) {
 app.use(express.static(path.join(__dirname, '..', 'frontend')));
 
 // ── API Routes ─────────────────────────────────────────────────
-app.use('/api/auth', authRoutes);
+app.use('/api/auth', authLimiter, authRoutes);
 app.use('/api/meetings', meetingRoutes);
 app.use('/api/transcribe', transcriptionRoutes);
 app.use('/api/analyze', aiRoutes);
@@ -75,10 +107,18 @@ app.get('/api/health', (req, res) => {
     timestamp: new Date().toISOString(),
     services: {
       assemblyai: !!process.env.ASSEMBLYAI_API_KEY,
-      openai: !!process.env.OPENAI_API_KEY,
       mongodb: !!process.env.MONGODB_URI,
+      // Which AI provider is active, and whether its key is present.
+      ai: aiService.describeProvider(),
     },
   });
+});
+
+// ── Unknown API routes: JSON 404, never the SPA shell ──────────
+// Must come before the catch-all, otherwise a mistyped endpoint returns
+// index.html and the client fails with an HTML parse error.
+app.use('/api', (req, res) => {
+  res.status(404).json({ error: `Not found: ${req.method} ${req.originalUrl}` });
 });
 
 // ── Fallback: serve index.html for SPA ─────────────────────────
@@ -93,7 +133,7 @@ app.use((err, req, res, next) => {
     return res.status(403).json({ error: err.message || 'CORS policy violation' });
   }
   console.error('Unhandled error:', err.message);
-  res.status(500).json({ error: err.message || 'Internal server error' });
+  res.status(500).json({ error: 'Internal server error' });
 });
 
 // ── Start Server ───────────────────────────────────────────────

@@ -2,10 +2,13 @@ const User = require('../models/User');
 const { sendOTPEmail, sendPasswordResetEmail } = require('../services/emailService');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
+const crypto = require('crypto');
+const { JWT_SECRET } = require('../config/jwt');
 
-// Helper to generate 6-digit OTP
-const generateOTP = () => Math.floor(100000 + Math.random() * 900000).toString();
-const JWT_SECRET = process.env.JWT_SECRET || 'specora-dev-secret';
+// Helper to generate 6-digit OTP.
+// SECURITY: crypto.randomInt, not Math.random — Math.random is a predictable
+// PRNG and its output can be reconstructed from observed values.
+const generateOTP = () => String(crypto.randomInt(100000, 1000000));
 
 const signToken = (user) =>
   jwt.sign({ id: user._id, email: user.email, name: user.name }, JWT_SECRET, { expiresIn: '12h' });
@@ -125,19 +128,18 @@ exports.login = async (req, res) => {
 
     const user = await User.findOne({ email });
 
-    if (!user) {
-      return res.status(404).json({ error: 'No account found with this email. Please sign up.' });
+    // SECURITY: unknown email and wrong password must be indistinguishable, or
+    // the endpoint becomes a registered-user oracle. Always run a bcrypt
+    // comparison so the response time does not leak account existence either.
+    const DUMMY_HASH = '$2a$10$N9qo8uLOickgx2ZMRZoMyeIjZAgcfl7p92ldGxad68LJZdL17lhWy';
+    const isMatch = await bcrypt.compare(password, user ? user.password : DUMMY_HASH);
+
+    if (!user || !isMatch) {
+      return res.status(401).json({ error: 'Invalid email or password.' });
     }
 
     if (!user.isVerified) {
-      return res.status(400).json({ error: 'Account not verified. Please sign up again to receive a new code.' });
-    }
-
-    // Check password
-    const isMatch = await bcrypt.compare(password, user.password);
-
-    if (!isMatch) {
-      return res.status(400).json({ error: 'Invalid credentials. Password is incorrect.' });
+      return res.status(403).json({ error: 'Account not verified. Please sign up again to receive a new code.' });
     }
 
     const userData = formatUser(user);
@@ -160,8 +162,14 @@ exports.requestPasswordReset = async (req, res) => {
 
     const user = await User.findOne({ email });
 
+    // SECURITY: always answer identically. Revealing "no verified account with
+    // this email" turns password reset into a user-enumeration oracle.
+    const genericResponse = {
+      message: 'If an account exists for that email, a password reset code has been sent.',
+    };
+
     if (!user || !user.isVerified) {
-      return res.status(404).json({ error: 'No verified account found with this email' });
+      return res.status(200).json(genericResponse);
     }
 
     const otp = generateOTP();
@@ -173,9 +181,15 @@ exports.requestPasswordReset = async (req, res) => {
     user.resetOtpExpiry = otpExpiry;
     await user.save();
 
-    await sendPasswordResetEmail(email, otp, user.name);
+    // SECURITY: a send failure must not change the response. Otherwise a known
+    // address (500) is still distinguishable from an unknown one (200).
+    try {
+      await sendPasswordResetEmail(email, otp, user.name);
+    } catch (mailError) {
+      console.error('Password reset email failed to send:', mailError.message);
+    }
 
-    res.status(200).json({ message: 'Password reset code sent to ' + email });
+    res.status(200).json(genericResponse);
   } catch (error) {
     console.error('Password reset request error:', error);
     res.status(500).json({ error: 'Internal server error' });
@@ -197,12 +211,14 @@ exports.resetPassword = async (req, res) => {
 
     const user = await User.findOne({ email });
 
+    // SECURITY: same generic failure whether the account is absent, unverified,
+    // or the code is simply wrong.
     if (!user || !user.isVerified) {
-      return res.status(404).json({ error: 'No verified account found with this email' });
+      return res.status(400).json({ error: 'Invalid or expired reset code.' });
     }
 
     if (!user.resetOtp || !(await verifyHashedValue(otp, user.resetOtp))) {
-      return res.status(400).json({ error: 'Invalid OTP' });
+      return res.status(400).json({ error: 'Invalid or expired reset code.' });
     }
 
     if (!user.resetOtpExpiry || new Date() > user.resetOtpExpiry) {
