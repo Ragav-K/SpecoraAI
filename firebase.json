@@ -12,6 +12,28 @@
         "source": "**",
         "destination": "/index.html"
       }
+    ],
+    "headers": [
+      {
+        "comment": "HTML must always be revalidated. It is what pins the ?v= version on the scripts, so a cached copy hands returning visitors an outdated pairing of api.js and app.js — and those two only work together.",
+        "source": "**/*.html",
+        "headers": [
+          {
+            "key": "Cache-Control",
+            "value": "no-cache, max-age=0, must-revalidate"
+          }
+        ]
+      },
+      {
+        "comment": "Scripts and styles stay cacheable; the ?v= query in the (always fresh) HTML is what invalidates them on deploy.",
+        "source": "**/*.@(js|css)",
+        "headers": [
+          {
+            "key": "Cache-Control",
+            "value": "public, max-age=3600"
+          }
+        ]
+      }
     ]
   }
 }
