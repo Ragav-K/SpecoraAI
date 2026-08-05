@@ -58,7 +58,7 @@ Specora AI converts raw client meetings into structured software documentation. 
 
 4. **Copy environment template**  
    ```bash
-   cp backend/.env.example backend/.env   # create file if missing
+   cp ../.env.example backend/.env
    ```
 
 5. **Fill .env** (see below).
@@ -77,17 +77,33 @@ Specora AI converts raw client meetings into structured software documentation. 
 
 Create `backend/.env` with:
 
+| Key | Required | Description |
+| --- | --- | ----------- |
+| `MONGODB_URI` | yes | MongoDB Atlas connection string |
+| `JWT_SECRET` | in production | Signs session tokens. The server **refuses to start in production without it**; in development a random per-process secret is used instead, which invalidates sessions on every restart. |
+| `ASSEMBLYAI_API_KEY` | yes | Speech-to-text API key |
+| `PORT` | no | Server port (default 5000) |
+| `NODE_ENV` | no | Set to `production` when deploying |
+
+**AI analysis** — `AI_PROVIDER` picks the backend (`openai` \| `groq` \| `mock`); only the selected provider's key is needed.
+
 | Key | Description |
 | --- | ----------- |
-| `PORT` | Server port (default 5000) |
-| `MONGODB_URI` | MongoDB Atlas connection string |
-| `ASSEMBLYAI_API_KEY` | Speech-to-text API key |
-| `OPENAI_API_KEY` | GPT analysis key |
-| `BREVO_API_KEY` | Email (OTP/password reset) |
-| `EMAIL_FROM` | Sender email for Brevo (default `noreply@specora.ai`) |
+| `OPENAI_API_KEY` / `OPENAI_MODEL` | For `AI_PROVIDER=openai` (default model `gpt-4o`) |
+| `GROQ_API_KEY` / `GROQ_MODEL` | For `AI_PROVIDER=groq` |
+| `MOCK_AI` | `true` forces a mock transcript **and** mock analysis — no AssemblyAI or AI calls at all |
 
-Optional but recommended:
-- `NODE_ENV` for production settings.
+**Email (OTP + password reset)** — `EMAIL_PROVIDER` picks the backend (`resend` \| `brevo` \| `console`).
+
+| Key | Description |
+| --- | ----------- |
+| `RESEND_API_KEY` | For `EMAIL_PROVIDER=resend`. Needs a DNS-verified domain, or it only delivers to the Resend account owner. |
+| `BREVO_API_KEY` | For `EMAIL_PROVIDER=brevo`. No domain needed, but `EMAIL_FROM` must be a verified sender. |
+| `EMAIL_FROM` / `EMAIL_FROM_NAME` | Sender identity. Required for Brevo; Resend falls back to `onboarding@resend.dev`. |
+
+`EMAIL_PROVIDER=console` prints the code to the server log instead of sending it — development only, and the server rejects it in production so new users are never silently locked out.
+
+See [`.env.example`](../.env.example) for a copy-ready file.
 
 ---
 
@@ -120,17 +136,18 @@ Tasks to verify without calling AssemblyAI:
 1. **Create Meeting + Upload**  
    - Use a dummy audio file; backend stores it locally without contacting AssemblyAI.
 
-2. **Skip Transcription**  
-   - Frontend shows status message “Transcription skipped (check API key)” if `/api/transcribe/:id` fails (e.g., missing key).  
-   - Ensures rest of pipeline continues.
+2. **Mock Transcript & Analysis**  
+   - Set `MOCK_AI=true` to run the whole pipeline with a canned transcript and
+     canned analysis — no AssemblyAI or AI provider calls, and no billing.
 
-3. **Mock Transcript & Analysis**  
-   - Manually set `meeting.transcript` in MongoDB or add a temporary admin route.  
-   - Then call `/api/analyze/:id` to test GPT integration (requires OpenAI key).  
-   - Alternatively stub `aiService` to return sample JSON for UI testing.
+3. **Failed Transcription**  
+   - With a bad `ASSEMBLYAI_API_KEY`, the job fails and stores the reason; the
+     UI shows it on the transcription step and the rest of the pipeline
+     continues.
 
 4. **Polling Endpoint**  
-   - Hit `GET /api/transcribe/:meetingId` to confirm status returns even without real AssemblyAI jobs.
+   - Hit `GET /api/transcribe/:meetingId` to confirm status reporting without
+     starting a real AssemblyAI job.
 
 ---
 
@@ -156,14 +173,35 @@ All routes prefixed with `/api`.
 | GET | `/meetings` | List meetings |
 | GET | `/meetings/:id` | Fetch meeting |
 | POST | `/meetings/:id/upload` | Upload audio (`audio` form field) |
-| DELETE | `/meetings/:id` | Delete meeting (does not remove file yet) |
+| GET | `/meetings/:id/audio` | Stream the meeting's audio |
+| DELETE | `/meetings/:id` | Delete meeting and its audio file |
+
+> **Audio storage:** uploads are written to the local `uploads/` directory. On
+> platforms with an ephemeral filesystem (Render, Heroku, most containers) that
+> directory is wiped on every redeploy. The API checks the file actually exists
+> before reporting `audioAvailable`/`audioUrl`, and clears the stale pointer
+> when it doesn't, so a meeting whose audio is gone reports itself honestly
+> instead of serving a player that cannot load. Transcripts and analysis live in
+> MongoDB and are unaffected. Durable audio retention needs object storage
+> (S3/R2/GCS) — that is not wired up.
 
 ### Transcription
 
+Transcription runs as a **background job**, because a long recording takes far
+longer than any hosting platform will hold an HTTP request open. Start the job,
+then poll until `done`.
+
 | Method | Endpoint | Description |
 | ------ | -------- | ----------- |
-| POST | `/transcribe/:meetingId` | Uploads to AssemblyAI and starts transcription |
-| GET | `/transcribe/:meetingId` | Returns `status` + `transcript` without triggering new jobs |
+| POST | `/transcribe/:meetingId` | Starts (or resumes) transcription. Returns **202** immediately with `{ status, transcript, error, done }` — it does not wait for the transcript. Calling it again while a job is running reports progress instead of starting a second, separately billed job. Returns 400 if no audio is attached, 410 if the stored audio file is gone. |
+| GET | `/transcribe/:meetingId` | Poll progress: `{ status, transcript, error, done }`. `done` is true once the job reaches `transcribed` or `error`; on failure, `error` carries the reason. |
+
+The client helper `API.transcribeAndWait(meetingId, { onProgress })` wraps both
+calls and resolves with the transcript text.
+
+If the server restarts mid-job, the meeting keeps `status: 'transcribing'` and
+the AssemblyAI job id, and the next poll resumes that same job rather than
+re-uploading the audio.
 
 ### AI Analysis
 

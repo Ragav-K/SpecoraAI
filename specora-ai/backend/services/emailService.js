@@ -27,7 +27,23 @@ function getProvider() {
   return 'console';
 }
 
+/**
+ * SECURITY: the display name is user-supplied and lands inside an HTML email
+ * body. Escape it. `intro` and `footer` are trusted in-source literals that
+ * intentionally carry markup, so they are interpolated raw.
+ */
+function escapeHtml(value) {
+  return String(value ?? '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
 function buildOtpEmailHtml({ userName, otp, intro, footer }) {
+  const safeName = escapeHtml(userName);
+  const safeOtp = escapeHtml(otp);
   // Light ground + teal accent, matching the app's "Transcript" direction.
   // Email clients are unreliable with stylesheets, so everything is inline.
   return `
@@ -46,14 +62,14 @@ function buildOtpEmailHtml({ userName, otp, intro, footer }) {
         </div>
         <div style="padding:32px 28px;">
           <h2 style="color:#101418;font-size:18px;font-weight:600;margin:0 0 8px;">
-            Hey${userName ? ' ' + userName : ''}
+            Hey${safeName ? ' ' + safeName : ''}
           </h2>
           <p style="color:#59616F;font-size:14px;line-height:1.7;margin:0 0 24px;">
             ${intro}
           </p>
           <div style="background:#F1F3F6;border:1px solid rgba(14,124,116,0.25);border-radius:10px;padding:20px;text-align:center;margin-bottom:24px;">
             <div style="font-size:34px;font-weight:700;letter-spacing:10px;color:#0E7C74;font-family:'Courier New',Courier,monospace;">
-              ${otp}
+              ${safeOtp}
             </div>
           </div>
           <p style="color:#6B7280;font-size:12.5px;line-height:1.6;margin:0;">

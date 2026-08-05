@@ -80,19 +80,19 @@ const API = (() => {
   function buildFetchOptions(options) {
     const isFormData = options.body instanceof FormData;
     const headers = {
-      headers: {
-        ...(isFormData ? {} : { 'Content-Type': 'application/json' }),
-        ...options.headers,
-      },
+      ...(isFormData ? {} : { 'Content-Type': 'application/json' }),
+      ...options.headers,
     };
+
     const token = getSessionToken();
     if (token) {
-      headers.headers.Authorization = `Bearer ${token}`;
+      headers.Authorization = `Bearer ${token}`;
     }
-    return {
-      ...headers,
-      ...options,
-    };
+
+    // `headers` must be applied AFTER spreading `options`: a caller that passes
+    // its own `headers` key would otherwise clobber the merged object and strip
+    // the Authorization header along with it.
+    return { ...options, headers };
   }
 
   async function parseResponse(res, url) {
@@ -222,10 +222,93 @@ const API = (() => {
   }
 
   /**
-   * Start transcription for a meeting
+   * Start transcription for a meeting.
+   * Returns as soon as the job is accepted (202) — it does NOT wait for the
+   * transcript. Use transcribeAndWait for the full flow.
    */
   async function transcribe(meetingId) {
     return request(`/transcribe/${meetingId}`, { method: 'POST' });
+  }
+
+  /**
+   * Poll transcription progress: { status, transcript, error, done }
+   */
+  async function getTranscriptionStatus(meetingId) {
+    return request(`/transcribe/${meetingId}`);
+  }
+
+  /**
+   * Start transcription and poll until it finishes.
+   *
+   * The server runs transcription as a background job, because a long
+   * recording takes far longer than any hosting platform will hold a request
+   * open. The client therefore has to poll rather than await a single call.
+   *
+   * @param {string} meetingId
+   * @param {object} [opts]
+   * @param {(status: string) => void} [opts.onProgress] - called on each poll
+   * @param {number} [opts.intervalMs] - delay between polls
+   * @param {number} [opts.timeoutMs] - give up after this long
+   * @returns {Promise<string>} the transcript text
+   */
+  async function transcribeAndWait(meetingId, opts = {}) {
+    const intervalMs = opts.intervalMs || 3000;
+    const timeoutMs = opts.timeoutMs || 30 * 60 * 1000;
+    const onProgress = opts.onProgress || (() => {});
+
+    // Frontend (Firebase Hosting) and backend (Render) deploy separately, so a
+    // new client can briefly meet an older server. The old contract ran
+    // transcription inside the POST and its status route returned no `done`
+    // flag — hence both compatibility shims below. They can be dropped once
+    // the backend is known to be updated everywhere.
+    const isTerminal = (progress) =>
+      progress.done === true ||
+      progress.status === 'transcribed' ||
+      progress.status === 'completed' ||
+      progress.status === 'error';
+
+    const started = await transcribe(meetingId);
+
+    // Old backend: the POST itself carried the finished transcript.
+    if (started.transcript && started.status !== 'transcribing') {
+      onProgress('transcribed');
+      return started.transcript;
+    }
+
+    onProgress(started.status || 'transcribing');
+
+    const deadline = Date.now() + timeoutMs;
+
+    // A transient network blip mid-job should not fail the whole transcription;
+    // only give up once several consecutive polls have failed.
+    let consecutiveErrors = 0;
+
+    while (Date.now() < deadline) {
+      await new Promise((resolve) => setTimeout(resolve, intervalMs));
+
+      let progress;
+      try {
+        progress = await getTranscriptionStatus(meetingId);
+        consecutiveErrors = 0;
+      } catch (error) {
+        // A 401 has already redirected to login; anything else may be transient.
+        if (error.status === 401 || error.status === 404) throw error;
+        if (++consecutiveErrors >= 5) throw error;
+        continue;
+      }
+
+      onProgress(progress.status);
+
+      if (progress.status === 'error') {
+        throw new Error(progress.error || 'Transcription failed.');
+      }
+
+      if (isTerminal(progress)) {
+        return progress.transcript || '';
+      }
+    }
+
+    throw new Error('Transcription is taking unusually long. Check back on the meeting shortly.');
   }
 
   /**
@@ -271,6 +354,8 @@ const API = (() => {
     deleteMeeting,
     uploadAudio,
     transcribe,
+    getTranscriptionStatus,
+    transcribeAndWait,
     analyze,
     healthCheck,
     signup,
