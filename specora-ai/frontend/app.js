@@ -391,13 +391,20 @@ const App = (() => {
         const transcribeInfo = transcribeStep && transcribeStep.querySelector('.text-sm');
         const startedAt = Date.now();
 
-        await API.transcribeAndWait(meeting._id, {
-          onProgress: () => {
-            if (!transcribeInfo) return;
-            const seconds = Math.round((Date.now() - startedAt) / 1000);
-            transcribeInfo.textContent = `Transcribing — this can take a few minutes (${formatElapsed(seconds)})`;
-          },
-        });
+        // A browser holding a cached older api.js would not define
+        // transcribeAndWait. Degrade to the single-call form rather than
+        // throwing a TypeError at the user.
+        if (typeof API.transcribeAndWait === 'function') {
+          await API.transcribeAndWait(meeting._id, {
+            onProgress: () => {
+              if (!transcribeInfo) return;
+              const seconds = Math.round((Date.now() - startedAt) / 1000);
+              transcribeInfo.textContent = `Transcribing — this can take a few minutes (${formatElapsed(seconds)})`;
+            },
+          });
+        } else {
+          await API.transcribe(meeting._id);
+        }
 
         await markStepDone('sp2', 'step-transcribe', 'Transcription complete');
       } catch (e) {
