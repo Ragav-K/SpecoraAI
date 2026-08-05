@@ -67,7 +67,12 @@ async function startTranscription(audioUrl) {
   return response.data.id;
 }
 
-function pollTranscript(transcriptId, timeoutMs = 5 * 60 * 1000, intervalMs = 3000) {
+// Transcription now runs as a background job rather than inside an HTTP
+// request, so the ceiling is set by how long a job can legitimately take (a
+// multi-hour recording), not by a proxy's request timeout.
+const POLL_TIMEOUT_MS = 30 * 60 * 1000;
+
+function pollTranscript(transcriptId, timeoutMs = POLL_TIMEOUT_MS, intervalMs = 3000) {
   return new Promise((resolve, reject) => {
     if (isMock) {
       return resolve(MOCK_TRANSCRIPT);

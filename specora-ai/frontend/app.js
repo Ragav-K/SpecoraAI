@@ -384,7 +384,21 @@ const App = (() => {
         </div>`;
 
       try {
-        await API.transcribe(meeting._id);
+        // Transcription is a background job on the server, so this polls until
+        // it finishes rather than waiting on one long request. Keep the step's
+        // subtitle updated so a multi-minute job doesn't look frozen.
+        const transcribeStep = document.getElementById('step-transcribe');
+        const transcribeInfo = transcribeStep && transcribeStep.querySelector('.text-sm');
+        const startedAt = Date.now();
+
+        await API.transcribeAndWait(meeting._id, {
+          onProgress: () => {
+            if (!transcribeInfo) return;
+            const seconds = Math.round((Date.now() - startedAt) / 1000);
+            transcribeInfo.textContent = `Transcribing — this can take a few minutes (${formatElapsed(seconds)})`;
+          },
+        });
+
         await markStepDone('sp2', 'step-transcribe', 'Transcription complete');
       } catch (e) {
         // Report the actual failure. The old blanket "check API key" text
@@ -433,6 +447,13 @@ const App = (() => {
     }
 
     processBtn.disabled = false;
+  }
+
+  /** Seconds as m:ss, for long-running step timers. */
+  function formatElapsed(seconds) {
+    const mins = Math.floor(seconds / 60);
+    const secs = String(seconds % 60).padStart(2, '0');
+    return `${mins}:${secs}`;
   }
 
   function markStepDone(spinnerId, stepId, doneText) {

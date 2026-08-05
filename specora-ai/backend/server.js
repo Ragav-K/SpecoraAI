@@ -62,13 +62,33 @@ app.use(cors({
   credentials: true,
 }));
 
+/**
+ * Transcription progress polls are GET /api/transcribe/:id, issued every few
+ * seconds for as long as a job runs. They are normal client behaviour, not
+ * abuse, and would otherwise consume the entire general budget within a couple
+ * of minutes — so they are excluded here and metered separately below.
+ */
+const isTranscriptionPoll = (req) =>
+  req.method === 'GET' && /^\/api\/transcribe\/[^/]+\/?$/.test(req.originalUrl.split('?')[0]);
+
 // Rate limiting for all API routes (abuse mitigation)
 const apiLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
   max: 100,
   standardHeaders: true,
   legacyHeaders: false,
+  skip: isTranscriptionPoll,
   message: { error: 'Too many requests. Please try again later.' },
+});
+
+// Polls are cheap (one indexed read) but must still be bounded. This ceiling
+// comfortably covers a full-length job at the client's poll interval.
+const transcriptionPollLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 1000,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: 'Too many status requests. Please try again later.' },
 });
 
 // Tighter limit on auth: the global 100/15min is far too loose to slow down
@@ -98,7 +118,7 @@ app.use(express.static(path.join(__dirname, '..', 'frontend')));
 // ── API Routes ─────────────────────────────────────────────────
 app.use('/api/auth', authLimiter, authRoutes);
 app.use('/api/meetings', meetingRoutes);
-app.use('/api/transcribe', transcriptionRoutes);
+app.use('/api/transcribe', transcriptionPollLimiter, transcriptionRoutes);
 app.use('/api/analyze', aiRoutes);
 
 // ── Health Check ───────────────────────────────────────────────

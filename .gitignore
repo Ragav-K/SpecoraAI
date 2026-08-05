@@ -47,6 +47,9 @@ build/Release
 # Environment variables (important for security)
 .env
 .env.*
+# ...but the template carries no secrets and must be in the repo, or a new
+# checkout has no record of which variables the server needs.
+!.env.example
 backend/.env
 specora-ai/backend/.env
 .env.local

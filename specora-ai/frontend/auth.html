@@ -237,7 +237,9 @@
   </div>
 </div>
 
-<script src="api.js?v=1.2"></script>
-<script src="auth.js"></script>
+<!-- Keep this version query in step with index.html — both pages load the
+     same api.js and a stale copy breaks them the same way. -->
+<script src="api.js?v=1.3"></script>
+<script src="auth.js?v=1.3"></script>
 </body>
 </html>

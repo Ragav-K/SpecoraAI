@@ -26,6 +26,19 @@ const meetingSchema = new mongoose.Schema({
     type: String,
     default: '',
   },
+  // AssemblyAI's job id for the in-flight transcription. Persisted so a server
+  // restart mid-job can resume polling instead of stranding the meeting in
+  // 'transcribing' forever.
+  transcriptId: {
+    type: String,
+    default: '',
+  },
+  // Why the last transcription attempt failed, surfaced to the client so a
+  // failed job explains itself instead of just showing status 'error'.
+  transcriptionError: {
+    type: String,
+    default: '',
+  },
   requirements: {
     type: [String],
     default: [],

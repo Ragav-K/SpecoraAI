@@ -2,14 +2,45 @@ const fs = require('fs');
 const path = require('path');
 const Meeting = require('../models/Meeting');
 
+/**
+ * Is the meeting's audio actually readable right now?
+ *
+ * `audioPath` living in the database is not proof the file exists. Uploads are
+ * written to the container's local disk, which is ephemeral on Render and
+ * similar platforms — every redeploy wipes it while the database keeps
+ * pointing at the vanished file. Checking the filesystem is what stops the API
+ * from advertising a player that can only ever fail to load.
+ */
+const audioFileExists = (audioPath) => {
+  if (!audioPath) return false;
+  try {
+    return fs.existsSync(path.resolve(audioPath));
+  } catch (error) {
+    return false;
+  }
+};
+
 const formatMeeting = (meeting) => {
   if (!meeting) return null;
   const raw = meeting.toObject ? meeting.toObject() : meeting;
+  const available = audioFileExists(raw.audioPath);
   return {
     ...raw,
-    audioUrl: raw.audioPath ? `/api/meetings/${meeting._id}/audio` : '',
-    audioAvailable: Boolean(raw.audioPath),
+    audioUrl: available ? `/api/meetings/${meeting._id}/audio` : '',
+    audioAvailable: available,
   };
+};
+
+/**
+ * Drop a dangling audio pointer so the record stops claiming a file that is
+ * gone. Best-effort: a failure here must never break the read that noticed it.
+ */
+const forgetMissingAudio = async (meetingId, userId) => {
+  try {
+    await Meeting.updateOne({ _id: meetingId, user: userId }, { audioPath: '', audioUrl: '' });
+  } catch (error) {
+    console.warn(`Could not clear missing audio pointer for ${meetingId}:`, error.message);
+  }
 };
 
 /**
@@ -68,6 +99,11 @@ async function getMeetingById(req, res) {
     // used to probe which meeting IDs exist.
     if (!meeting) {
       return res.status(404).json({ error: 'Meeting not found' });
+    }
+
+    if (meeting.audioPath && !audioFileExists(meeting.audioPath)) {
+      await forgetMissingAudio(meeting._id, req.user.id);
+      meeting.audioPath = '';
     }
 
     res.json(formatMeeting(meeting));
@@ -145,6 +181,9 @@ async function streamAudio(req, res) {
 
     const filePath = path.resolve(meeting.audioPath);
     if (!fs.existsSync(filePath)) {
+      // The file went away underneath us (ephemeral disk). Clear the pointer so
+      // subsequent reads report the meeting honestly as having no audio.
+      await forgetMissingAudio(meeting._id, req.user.id);
       return res.status(404).json({ error: 'Audio not found' });
     }
 
