@@ -129,6 +129,21 @@ See [`.env.example`](../.env.example) for a copy-ready file.
 
 ---
 
+## Tests
+
+```bash
+npm test           # unit suites — no database, no network, no keys
+npm run test:e2e   # boots the real server, drives the full pipeline
+npm run test:prod  # smoke-tests the live deployment
+```
+
+`npm test` is safe anywhere. Both end-to-end suites write to whatever
+`MONGODB_URI` points at and delete everything they create in a `finally` block,
+confirming the cleanup in their final lines. See [`tests/README.md`](tests/README.md)
+for what each suite covers and how test data is isolated.
+
+---
+
 ## Mock Testing Before AssemblyAI Access
 
 Tasks to verify without calling AssemblyAI:
